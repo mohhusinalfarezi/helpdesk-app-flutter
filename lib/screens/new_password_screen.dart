@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'login_screen.dart';
+
 class NewPasswordScreen extends StatefulWidget {
   const NewPasswordScreen({super.key});
 
@@ -15,7 +17,8 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   static const Color errorRed = Color(0xFFFF5252);
 
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -59,11 +62,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.check_circle,
-                color: mintGreen,
-                size: 80,
-              ),
+              const Icon(Icons.check_circle, color: mintGreen, size: 80),
               const SizedBox(height: 24),
               const Text(
                 'Password Reset Successful',
@@ -78,18 +77,20 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               const Text(
                 'You can now log in with your new password.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: greyText,
-                ),
+                style: TextStyle(fontSize: 14, color: greyText),
               ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigate back to login (assumes login is first route)
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                      (route) => false,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: mintGreen,
@@ -170,12 +171,24 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (_passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
+                    if (_passwordController.text.isEmpty ||
+                        _confirmPasswordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Semua kolom harus diisi!'),
+                        ),
+                      );
                       return;
                     }
-                    if (!_isMismatch && _passwordController.text == _confirmPasswordController.text) {
-                      _showSuccessModal();
+                    if (_isMismatch) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Tolong perbaiki password Anda'),
+                        ),
+                      );
+                      return;
                     }
+                    _showSuccessModal();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: mintGreen,
@@ -228,7 +241,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
         fillColor: Colors.white,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -249,7 +262,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           decoration: InputDecoration(
             hintText: 'Confirm New Password',
             hintStyle: TextStyle(
-              color: _isMismatch ? errorRed.withOpacity(0.6) : greyText,
+              color: _isMismatch ? errorRed.withValues(alpha: 0.6) : greyText,
             ),
             prefixIcon: Icon(
               Icons.lock_outline,
@@ -269,11 +282,15 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               },
             ),
             filled: true,
-            fillColor: _isMismatch ? errorRed.withOpacity(0.05) : Colors.white,
+            fillColor: _isMismatch
+                ? errorRed.withValues(alpha: 0.05)
+                : Colors.white,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: _isMismatch ? errorRed : Colors.grey.withOpacity(0.3),
+                color: _isMismatch
+                    ? errorRed
+                    : Colors.grey.withValues(alpha: 0.3),
               ),
             ),
             focusedBorder: OutlineInputBorder(

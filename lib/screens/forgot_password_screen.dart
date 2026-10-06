@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'new_password_screen.dart';
 import 'otp_verification_screen.dart';
+import 'two_factor_auth_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -12,10 +14,19 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   int _selectedIndex = 0;
 
+  // Controller baru untuk menangkap input email
+  final TextEditingController _emailController = TextEditingController();
+
   static const Color primaryMintGreen = Color(0xFF48CEA4);
   static const Color primaryText = Color(0xFF1E293B);
   static const Color subtext = Color(0xFF94A3B8);
   static const Color cardInactiveBg = Color(0xFFF1F5F9);
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,15 +68,50 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Forgot your password? Then let\'s submit password reset 🔑',
+                'Enter your registered email and select a method to receive your reset code 🔑',
                 style: TextStyle(fontSize: 16, color: subtext, height: 1.5),
               ),
               const SizedBox(height: 32),
 
+              // Kolom Input Email Baru
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Enter your email address',
+                  hintStyle: const TextStyle(color: subtext),
+                  prefixIcon: const Icon(Icons.email_outlined, color: subtext),
+                  filled: true,
+                  fillColor: cardInactiveBg,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.transparent),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: primaryMintGreen,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              const Text(
+                'Select Reset Method',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: primaryText,
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // Selection Cards
               _SelectionCard(
                 title: 'Email Address',
-                subtitle: 'Seamlessly reset your password via Email Address',
+                subtitle: 'Send OTP via Email',
                 icon: Icons.email_outlined,
                 isSelected: _selectedIndex == 0,
                 onTap: () {
@@ -77,7 +123,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 16),
               _SelectionCard(
                 title: '2FA Authentication',
-                subtitle: 'Seamlessly reset your password via 2 Factor Auth',
+                subtitle: 'Send OTP via Authenticator',
                 icon: Icons.lock_outline,
                 isSelected: _selectedIndex == 1,
                 onTap: () {
@@ -89,7 +135,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 16),
               _SelectionCard(
                 title: 'Google Auth',
-                subtitle: 'Seamlessly reset your password via Google Auth',
+                subtitle: 'Reset via Google Account',
                 icon: Icons.shield_outlined,
                 isSelected: _selectedIndex == 2,
                 onTap: () {
@@ -106,13 +152,74 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigasi ke layar OTP
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const OtpVerificationScreen(),
-                      ),
-                    );
+                    switch (_selectedIndex) {
+                      case 0:
+                        // Email: Validasi email kosong, lalu ke OTP
+                        if (_emailController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please enter your email address first!',
+                              ),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const OtpVerificationScreen(),
+                          ),
+                        );
+                        break;
+                      case 1:
+                        // 2FA: Langsung ke layar 2FA
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const TwoFactorAuthScreen(),
+                          ),
+                        );
+                        break;
+                      case 2:
+                        // Google Auth: Tampilkan loading, lalu ke New Password
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext dialogContext) {
+                            return const AlertDialog(
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: primaryMintGreen,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text('Connecting to Google...'),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                        Future.delayed(
+                          const Duration(seconds: 2),
+                          () {
+                            if (!context.mounted) return;
+                            Navigator.pop(context); // Tutup dialog
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const NewPasswordScreen(),
+                              ),
+                            );
+                          },
+                        );
+                        break;
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryMintGreen,

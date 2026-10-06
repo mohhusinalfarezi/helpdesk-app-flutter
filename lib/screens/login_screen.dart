@@ -46,10 +46,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
+        final name = data['name'] ?? 'Pengguna'; // Extract name
 
         // Menyimpan token JWT ke memori HP
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
+        await prefs.setString('user_name', name); // Save name to memory
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

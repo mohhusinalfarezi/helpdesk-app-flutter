@@ -1,10 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_screen.dart'; // Import untuk memanggil AI Hazel
 import 'ticket_tracker_screen.dart'; // Import untuk halaman Pelacak Tiket
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  String _userName = "Pengguna";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('user_name') ?? "Pengguna";
+    });
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) {
+      return "Selamat pagi,";
+    } else if (hour < 15) {
+      return "Selamat siang,";
+    } else if (hour < 18) {
+      return "Selamat sore,";
+    } else {
+      return "Selamat malam,";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,17 +103,17 @@ class DashboardScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Teks Sapaan
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Selamat pagi,',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          _getGreeting(),
+                          style: const TextStyle(color: Colors.white70, fontSize: 14),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'Hai, Moh. Husin Alfarezi',
-                          style: TextStyle(
+                          'Hai, $_userName',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -125,7 +129,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    // 1. Validasi Input Kosong & Password Match
                     if (_isMismatch) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -134,7 +139,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       );
                       return;
                     }
-                    // Aksi register ke backend nantinya
+
+                    final name = _nameController.text.trim();
+                    final email = _emailController.text.trim();
+                    final password = _passwordController.text;
+
+                    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Semua kolom harus diisi!'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // 2. Tampilkan indikator loading (Opsional tapi bagus untuk UX)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Sedang mendaftarkan akun...'),
+                      ),
+                    );
+
+                    // 3. Panggil API Backend Spring Boot
+                    final url = Uri.parse(
+                      'http://10.0.2.2:8080/api/auth/register',
+                    );
+
+                    try {
+                      final response = await http.post(
+                        url,
+                        headers: {'Content-Type': 'application/json'},
+                        body: jsonEncode({
+                          'name': name,
+                          'email': email,
+                          'password': password,
+                        }),
+                      );
+
+                      if (response.statusCode == 200) {
+                        // Sukses masuk database
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Registrasi Berhasil! Silakan Sign In.',
+                              ),
+                              backgroundColor: mintGreen,
+                            ),
+                          );
+                          Navigator.pop(context); // Kembali ke Login
+                        }
+                      } else {
+                        // Gagal (misal: Email sudah terdaftar)
+                        final data = jsonDecode(response.body);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                data['message'] ?? 'Registrasi gagal',
+                              ),
+                              backgroundColor: errorRed,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      // Error jaringan / Server mati
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Error jaringan: Tidak dapat terhubung ke server.',
+                            ),
+                            backgroundColor: errorRed,
+                          ),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: mintGreen,
@@ -200,7 +281,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fillColor: Colors.white,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -236,7 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fillColor: Colors.white,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -257,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           decoration: InputDecoration(
             hintText: 'Confirm Password',
             hintStyle: TextStyle(
-              color: _isMismatch ? errorRed.withOpacity(0.6) : greyText,
+              color: _isMismatch ? errorRed.withValues(alpha: 0.6) : greyText,
             ),
             prefixIcon: Icon(
               Icons.lock_outline,
@@ -277,11 +358,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               },
             ),
             filled: true,
-            fillColor: _isMismatch ? errorRed.withOpacity(0.05) : Colors.white,
+            fillColor: _isMismatch
+                ? errorRed.withValues(alpha: 0.05)
+                : Colors.white,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: _isMismatch ? errorRed : Colors.grey.withOpacity(0.3),
+                color: _isMismatch
+                    ? errorRed
+                    : Colors.grey.withValues(alpha: 0.3),
               ),
             ),
             focusedBorder: OutlineInputBorder(

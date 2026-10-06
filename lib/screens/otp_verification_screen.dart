@@ -1,18 +1,118 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 
 import 'new_password_screen.dart';
 
-class OtpVerificationScreen extends StatelessWidget {
-  const OtpVerificationScreen({super.key});
+class OtpVerificationScreen extends StatefulWidget {
+  final String email;
+
+  const OtpVerificationScreen({super.key, required this.email});
+
+  @override
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+}
+
+class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  static const Color backgroundColor = Color(0xFFF8FAFC);
+  static const Color mintGreen = Color(0xFF48CEA4);
+  static const Color navySlate = Color(0xFF1E293B);
+  static const Color greyColor = Color(0xFF94A3B8);
+
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+
+  Timer? _timer;
+  int _start = 60;
+
+  void startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_start == 0) {
+        timer.cancel();
+      } else {
+        setState(() {
+          _start--;
+        });
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    for (final controller in _otpControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _verifyOtp() async {
+    final combinedOtp = _otpControllers.map((c) => c.text).join();
+
+    if (combinedOtp.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the complete 6-digit code'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Verifying OTP...')));
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8080/api/auth/verify-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': widget.email, 'otp': combinedOtp}),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NewPasswordScreen(email: widget.email),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid OTP'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    const Color backgroundColor = Color(0xFFF8FAFC);
-    const Color mintGreen = Color(0xFF48CEA4);
-    const Color navySlate = Color(0xFF1E293B);
-    const Color greyColor = Color(0xFF94A3B8);
-
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -60,6 +160,7 @@ class OtpVerificationScreen extends StatelessWidget {
                       width: 48,
                       height: 48,
                       child: TextField(
+                        controller: _otpControllers[index],
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
                         maxLength: 1,
@@ -103,15 +204,67 @@ class OtpVerificationScreen extends StatelessWidget {
                       style: TextStyle(color: greyColor, fontSize: 14),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        // Resend logic
-                      },
-                      child: const Text(
-                        "Resend (00:59)",
+                      onTap: _start == 0
+                          ? () async {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Resending OTP...'),
+                                ),
+                              );
+                              try {
+                                final response = await http.post(
+                                  Uri.parse(
+                                    'http://10.0.2.2:8080/api/auth/forgot-password',
+                                  ),
+                                  headers: {'Content-Type': 'application/json'},
+                                  body: jsonEncode({'email': widget.email}),
+                                );
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context)
+                                    .hideCurrentSnackBar();
+                                if (response.statusCode == 200) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('New OTP sent!'),
+                                    ),
+                                  );
+                                  setState(() {
+                                    _start = 60;
+                                  });
+                                  startTimer();
+                                } else {
+                                  final body = jsonDecode(response.body);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        body['message'] ??
+                                            'Failed to resend OTP',
+                                      ),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context)
+                                    .hideCurrentSnackBar();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error: $e'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
+                            }
+                          : null,
+                      child: Text(
+                        _start > 0 ? "Resend ($_start s)" : "Resend Code",
                         style: TextStyle(
-                          color: mintGreen,
+                          color: _start > 0 ? greyColor : mintGreen,
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: _start == 0
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -130,15 +283,7 @@ class OtpVerificationScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () {
-                      // Navigasi ke layar New Password
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NewPasswordScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: _verifyOtp,
                     child: const Text(
                       'Verify Code',
                       style: TextStyle(

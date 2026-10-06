@@ -110,7 +110,7 @@ class TwoFactorAuthScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const NewPasswordScreen(),
+                          builder: (context) => const NewPasswordScreen(email: ''),
                         ),
                       );
                     },

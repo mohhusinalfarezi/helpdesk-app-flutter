@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'new_password_screen.dart';
 import 'otp_verification_screen.dart';
@@ -26,6 +29,61 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _sendOtpViaEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email address first!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sending OTP...')),
+    );
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8080/api/auth/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(email: email),
+          ),
+        );
+      } else {
+        final body = jsonDecode(response.body);
+        final message = body['message'] ?? 'Failed to send OTP';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -154,25 +212,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   onPressed: () {
                     switch (_selectedIndex) {
                       case 0:
-                        // Email: Validasi email kosong, lalu ke OTP
-                        if (_emailController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Please enter your email address first!',
-                              ),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                          return;
-                        }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const OtpVerificationScreen(),
-                          ),
-                        );
+                        _sendOtpViaEmail();
                         break;
                       case 1:
                         // 2FA: Langsung ke layar 2FA
@@ -213,7 +253,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    const NewPasswordScreen(),
+                                    NewPasswordScreen(email: _emailController.text.trim()),
                               ),
                             );
                           },

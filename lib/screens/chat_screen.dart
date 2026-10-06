@@ -27,6 +27,7 @@ class _ChatScreenState extends State<ChatScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
+  bool _isTyping = false;
 
   // Pesan bawaan saat pertama kali dibuka
   final List<Map<String, dynamic>> messages = [
@@ -93,6 +94,7 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       _selectedImage = null; // Kosongkan preview di atas kolom input
       _isLoading = true;
+      _isTyping = true;
     });
 
     _messageController.clear();
@@ -117,10 +119,11 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        final botReply = responseData['reply'] ?? 'Maaf, terjadi kesalahan.';
         setState(() {
           messages.add({
-            'text':
-                response.body, // Asumsi backend mengembalikan string langsung
+            'text': botReply,
             'isUser': false,
             'time': TimeOfDay.now().format(context),
             'imagePath': null,
@@ -136,6 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
     } finally {
       setState(() {
         _isLoading = false;
+        _isTyping = false;
       });
       _scrollToBottom();
     }
@@ -206,35 +210,17 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              itemCount: messages.length,
+              itemCount: messages.length + (_isTyping ? 1 : 0),
               itemBuilder: (context, index) {
+                // Typing indicator as the last item
+                if (_isTyping && index == messages.length) {
+                  return _buildTypingIndicator();
+                }
                 final message = messages[index];
                 return _buildMessageBubble(message);
               },
             ),
           ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      color: mintGreen,
-                      strokeWidth: 2,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    "Hazel sedang mengetik...",
-                    style: TextStyle(color: greyText, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
           _buildInputArea(),
         ],
       ),
@@ -339,6 +325,51 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const CircleAvatar(
+            radius: 16,
+            backgroundColor: mintGreen,
+            child: Icon(Icons.support_agent, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(16),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Text(
+              "Hazel is typing...",
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: greyText,
+                fontSize: 14,
+              ),
+            ),
+          ),
         ],
       ),
     );

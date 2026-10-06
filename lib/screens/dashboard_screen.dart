@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_screen.dart'; // Import untuk memanggil AI Hazel
@@ -13,11 +16,29 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String _userName = "Pengguna";
+  late Future<List<dynamic>> _ticketsFuture;
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
+    _ticketsFuture = fetchTickets();
+  }
+
+  Future<List<dynamic>> fetchTickets() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching tickets: $e');
+      return [];
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -53,6 +74,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildCorporateServices(),
             const SizedBox(height: 16),
             _buildNotificationCard(),
+            const SizedBox(height: 16),
+            _buildRecentTickets(),
             const SizedBox(height: 16),
             _buildPromoBanner(),
             const SizedBox(height: 40), // Spasi bawah
@@ -450,7 +473,237 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- KOMPONEN 4: Banner Promosi ---
+  // --- KOMPONEN 4: Recent Tickets (Dynamic from Backend) ---
+  Widget _buildRecentTickets() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recent Tickets',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _ticketsFuture = fetchTickets();
+                  });
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.refresh, size: 16, color: Color(0xFF48CEA4)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Refresh',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF48CEA4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<dynamic>>(
+            future: _ticketsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF48CEA4),
+                    ),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError ||
+                  !snapshot.hasData ||
+                  snapshot.data!.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.inbox_outlined,
+                          size: 40, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text(
+                        'No recent tickets',
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final tickets = snapshot.data!;
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: tickets.length,
+                itemBuilder: (context, index) {
+                  final ticket = tickets[index];
+                  return _buildTicketCard(ticket);
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTicketCard(Map<String, dynamic> ticket) {
+    final String id = ticket['ticketId']?.toString() ?? ticket['id']?.toString() ?? '-';
+    final String problem = ticket['problem']?.toString() ?? ticket['description']?.toString() ?? 'No description';
+    final String status = ticket['status']?.toString() ?? 'Unknown';
+    final String createdAt = ticket['createdAt']?.toString() ?? '';
+
+    // Determine status color & icon
+    Color statusColor;
+    IconData statusIcon;
+    switch (status.toUpperCase()) {
+      case 'OPEN':
+        statusColor = const Color(0xFF3B82F6); // blue
+        statusIcon = Icons.fiber_new;
+        break;
+      case 'IN_PROGRESS':
+      case 'IN PROGRESS':
+        statusColor = const Color(0xFFF59E0B); // amber
+        statusIcon = Icons.autorenew;
+        break;
+      case 'RESOLVED':
+      case 'CLOSED':
+        statusColor = const Color(0xFF48CEA4); // mint green
+        statusIcon = Icons.check_circle_outline;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.help_outline;
+    }
+
+    // Format date nicely
+    String formattedDate = createdAt;
+    if (createdAt.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(createdAt);
+        formattedDate =
+            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {
+        // keep original string
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Left accent bar
+          Container(
+            width: 4,
+            height: 48,
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Status icon
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(statusIcon, color: statusColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          // Ticket details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '#$id',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  problem,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          // Status badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- KOMPONEN 5: Banner Promosi ---
   Widget _buildPromoBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),

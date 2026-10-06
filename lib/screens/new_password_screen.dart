@@ -1,9 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'login_screen.dart';
 
 class NewPasswordScreen extends StatefulWidget {
-  const NewPasswordScreen({super.key});
+  final String email;
+
+  const NewPasswordScreen({super.key, required this.email});
 
   @override
   State<NewPasswordScreen> createState() => _NewPasswordScreenState();
@@ -170,7 +175,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_passwordController.text.isEmpty ||
                         _confirmPasswordController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -188,7 +193,46 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                       );
                       return;
                     }
-                    _showSuccessModal();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Updating password...')),
+                    );
+
+                    try {
+                      final response = await http.post(
+                        Uri.parse('http://10.0.2.2:8080/api/auth/reset-password'),
+                        headers: {'Content-Type': 'application/json'},
+                        body: jsonEncode({
+                          'email': widget.email,
+                          'newPassword': _passwordController.text,
+                        }),
+                      );
+
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                      if (response.statusCode == 200) {
+                        _showSuccessModal();
+                      } else {
+                        final body = jsonDecode(response.body);
+                        final message = body['message'] ?? 'Failed to reset password';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(message),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Network error: $e'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: mintGreen,

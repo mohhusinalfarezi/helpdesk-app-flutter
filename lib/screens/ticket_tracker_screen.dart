@@ -1,44 +1,139 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'chat_screen.dart'; // Import layar chat AI Hazel
+import 'chat_screen.dart';
 
-class TicketTrackerScreen extends StatelessWidget {
+class TicketTrackerScreen extends StatefulWidget {
   const TicketTrackerScreen({super.key});
 
-  // Palet Warna
+  @override
+  State<TicketTrackerScreen> createState() => _TicketTrackerScreenState();
+}
+
+class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
   static const Color backgroundColor = Color(0xFFF8FAFC);
   static const Color mintGreen = Color(0xFF48CEA4);
   static const Color navySlate = Color(0xFF1E293B);
   static const Color greyText = Color(0xFF94A3B8);
+
+  bool _isLoading = true;
+  String _errorMessage = '';
+  List<dynamic> _tickets = [];
+  String _userName = "Pengguna";
+
+  // Variabel untuk data dinamis kartu hijau dan statistik
+  int _activeTicketsCount = 0;
+  int _resolvedTicketsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+    _fetchTicketsData();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('user_name') ?? "Pengguna";
+    });
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return "Selamat pagi,";
+    if (hour < 15) return "Selamat siang,";
+    if (hour < 18) return "Selamat sore,";
+    return "Selamat malam,";
+  }
+
+  Future<void> _fetchTicketsData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(
+        'token',
+      ); // Sesuaikan dengan key token-mu saat login
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List<dynamic>;
+
+        int active = 0;
+        int resolved = 0;
+
+        for (var t in data) {
+          String status = t['status']?.toString().toUpperCase() ?? '';
+          if (status == 'OPEN' ||
+              status == 'IN PROGRESS' ||
+              status == 'IN_PROGRESS') {
+            active++;
+          } else if (status == 'RESOLVED' || status == 'CLOSED') {
+            resolved++;
+          }
+        }
+
+        setState(() {
+          _tickets = data;
+          _activeTicketsCount = active;
+          _resolvedTicketsCount = resolved;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Gagal memuat API (Status: ${response.statusCode})';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Koneksi Ditolak/Error: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 24),
-              _buildPriorityCard(),
-              const SizedBox(height: 16),
-              _buildStatsRow(),
-              const SizedBox(height: 32),
-              _buildRecentTicketsHeader(),
-              const SizedBox(height: 16),
-              _buildTicketList(),
-              const SizedBox(height: 80), // Ruang ekstra untuk FAB
-            ],
-          ),
-        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: mintGreen))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 24),
+                    _buildPriorityCard(),
+                    const SizedBox(height: 16),
+                    _buildStatsRow(),
+                    const SizedBox(height: 32),
+                    _buildRecentTicketsHeader(),
+                    const SizedBox(height: 16),
+                    _buildTicketContent(),
+                    const SizedBox(height: 80),
+                  ],
+                ),
+              ),
       ),
-      // --- PENYESUAIAN TOMBOL MELAYANG (FAB) DI SINI ---
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigasi kembali ke Hazel untuk membuat tiket baru
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ChatScreen()),
@@ -52,14 +147,12 @@ class TicketTrackerScreen extends StatelessWidget {
     );
   }
 
-  // --- 1. Bagian Header ---
   Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            // Tombol Kembali
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: const Icon(
@@ -69,17 +162,17 @@ class TicketTrackerScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Corporate IT Support',
-                  style: TextStyle(color: greyText, fontSize: 12),
+                  _getGreeting(),
+                  style: const TextStyle(color: greyText, fontSize: 12),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Hello, Moh. Husin',
-                  style: TextStyle(
+                  _userName,
+                  style: const TextStyle(
                     color: navySlate,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -115,7 +208,6 @@ class TicketTrackerScreen extends StatelessWidget {
     );
   }
 
-  // --- 2. Kartu Prioritas ---
   Widget _buildPriorityCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -151,7 +243,7 @@ class TicketTrackerScreen extends StatelessWidget {
                 ],
               ),
               Text(
-                'Updated just now',
+                'Live Update',
                 style: TextStyle(
                   color: navySlate.withValues(alpha: 0.6),
                   fontSize: 11,
@@ -160,50 +252,44 @@ class TicketTrackerScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            '1 Active Ticket',
-            style: TextStyle(
+          // ANGKA AKTIF SEKARANG DINAMIS
+          Text(
+            '$_activeTicketsCount Active Ticket${_activeTicketsCount != 1 ? 's' : ''}',
+            style: const TextStyle(
               color: navySlate,
-              fontSize: 32,
+              fontSize: 28,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Assigned to Level 2 technical engineering\nqueue.',
+            _activeTicketsCount > 0
+                ? 'Assigned to technical engineering\nqueue for immediate action.'
+                : 'All systems operational.\nNo active issues currently.',
             style: TextStyle(
               color: navySlate.withValues(alpha: 0.7),
               fontSize: 13,
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const Icon(Icons.bolt, color: navySlate, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'Next SLA breach in 4 hours 12 mins',
-                style: TextStyle(
-                  color: navySlate.withValues(alpha: 0.9),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  // --- 3. Kartu Statistik ---
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatCard('AVG RESPONSE', '14 Mins')),
+        Expanded(
+          child: _buildStatCard('TOTAL TIKET', _tickets.length.toString()),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard('RESOLUTION RATE', '98.4%')),
+        Expanded(
+          child: _buildStatCard(
+            'TIKET SELESAI',
+            _resolvedTicketsCount.toString(),
+          ),
+        ),
       ],
     );
   }
@@ -247,7 +333,6 @@ class TicketTrackerScreen extends StatelessWidget {
     );
   }
 
-  // --- 4. Header Daftar Tiket ---
   Widget _buildRecentTicketsHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -260,42 +345,111 @@ class TicketTrackerScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          'View All >',
-          style: TextStyle(
-            color: mintGreen.withValues(alpha: 0.9),
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
+        GestureDetector(
+          onTap: _fetchTicketsData,
+          child: Row(
+            children: [
+              const Icon(Icons.refresh, size: 16, color: mintGreen),
+              const SizedBox(width: 4),
+              Text(
+                'Refresh',
+                style: TextStyle(
+                  color: mintGreen.withValues(alpha: 0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  // --- 5. Daftar Tiket ---
-  Widget _buildTicketList() {
-    return Column(
-      children: [
-        _buildTicketItem(
-          id: 'TKT-1789',
-          status: 'OPEN',
-          title: 'Login Issue',
-          category: 'Identity & Access',
-          time: 'Created 2h ago',
-          statusColor: const Color(0xFFFF5252),
-          statusBgColor: const Color(0xFFFF5252).withValues(alpha: 0.1),
+  Widget _buildTicketContent() {
+    if (_errorMessage.isNotEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
         ),
-        const SizedBox(height: 16),
-        _buildTicketItem(
-          id: 'TKT-1790',
-          status: 'IN PROGRESS',
-          title: 'Electric Connectivity Issue',
-          category: 'Network & Remote',
-          time: 'Updated 45m ago',
-          statusColor: const Color(0xFF448AFF),
-          statusBgColor: const Color(0xFF448AFF).withValues(alpha: 0.1),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+            ),
+          ],
         ),
-      ],
+      );
+    }
+
+    if (_tickets.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Column(
+          children: [
+            Icon(Icons.inbox_outlined, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text(
+              'Belum ada tiket yang terbuat',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _tickets.length,
+      itemBuilder: (context, index) {
+        final ticket = _tickets[index];
+        final String id = ticket['ticketId']?.toString() ?? '-';
+        final String status =
+            ticket['status']?.toString().toUpperCase() ?? 'OPEN';
+        final String title =
+            ticket['description']?.toString() ??
+            ticket['problem']?.toString() ??
+            'Tidak ada detail';
+        final String time = ticket['createdAt']?.toString() ?? 'Baru saja';
+
+        Color sColor = mintGreen;
+        Color sBgColor = mintGreen.withValues(alpha: 0.1);
+        if (status == 'OPEN') {
+          sColor = const Color(0xFFFF5252);
+          sBgColor = const Color(0xFFFF5252).withValues(alpha: 0.1);
+        } else if (status == 'IN PROGRESS' || status == 'IN_PROGRESS') {
+          sColor = const Color(0xFF448AFF);
+          sBgColor = const Color(0xFF448AFF).withValues(alpha: 0.1);
+        }
+
+        return Column(
+          children: [
+            _buildTicketItem(
+              id: id,
+              status: status,
+              title: title,
+              category: 'IT Support',
+              time: time,
+              statusColor: sColor,
+              statusBgColor: sBgColor,
+            ),
+            if (index < _tickets.length - 1) const SizedBox(height: 16),
+          ],
+        );
+      },
     );
   }
 
@@ -397,7 +551,7 @@ class TicketTrackerScreen extends StatelessWidget {
                   const Icon(Icons.access_time, color: greyText, size: 14),
                   const SizedBox(width: 6),
                   Text(
-                    time,
+                    time.length > 10 ? time.substring(0, 10) : time,
                     style: const TextStyle(color: greyText, fontSize: 12),
                   ),
                 ],

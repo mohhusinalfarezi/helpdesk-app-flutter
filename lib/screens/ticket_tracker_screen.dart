@@ -57,10 +57,21 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     });
 
     try {
+      // 1. Ambil token dari memori perangkat
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(
-        'token',
-      ); // Sesuaikan dengan key token-mu saat login
+      final token = prefs.getString('jwt_token');
+      debugPrint('=== ISI TOKEN DARI MEMORI: $token ===');
+      // Pastikan key ini sama dengan saat login
+
+      if (token == null || token.isEmpty) {
+        setState(() {
+          _errorMessage = 'Sesi login tidak valid. Silakan login ulang.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 2. Kirim request dengan membawa token JWT di Header
       final response = await http.get(
         Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
         headers: {

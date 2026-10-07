@@ -44,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
+        debugPrint('ISI RESPONSE BACKEND: ${response.body}');
         final data = jsonDecode(response.body);
         final token = data['token'];
         final name = data['name'] ?? 'Pengguna'; // Extract name

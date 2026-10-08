@@ -27,12 +27,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<List<dynamic>> fetchTickets() async {
     try {
+      // 1. Panggil brankas memori untuk mengambil token
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
+      // PENGECEKAN TOKEN: Menghilangkan garis merah Null Safety
+      if (token == null || token.isEmpty) {
+        debugPrint(
+          'Dashboard: Token tidak ditemukan, tidak bisa memuat tiket.',
+        );
+        return [];
+      }
+
+      // 2. Tembakkan request ke my-tickets (bukan all lagi)
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+        Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
       );
+
       if (response.statusCode == 200) {
         return json.decode(response.body) as List<dynamic>;
       } else {
+        debugPrint('Dashboard API Error: Status ${response.statusCode}');
         return [];
       }
     } catch (e) {
@@ -64,7 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Latar abu-abu sangat terang
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,20 +97,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildRecentTickets(),
             const SizedBox(height: 16),
             _buildPromoBanner(),
-            const SizedBox(height: 40), // Spasi bawah
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  // --- KOMPONEN 1: Header Mint Green dengan Ornamen & Kartu Quick Action ---
   Widget _buildHeaderAndQuickActions(BuildContext context) {
     return SizedBox(
-      height: 310, // Total tinggi area header + kartu melayang
+      height: 310,
       child: Stack(
         children: [
-          // Background Header dengan Ornamen Aset
           Container(
             height: 250,
             decoration: BoxDecoration(
@@ -104,9 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 image: const AssetImage('assets/images/header_pattern.png'),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.white.withValues(
-                    alpha: 0.15,
-                  ), // Mengatur transparansi ornamen
+                  Colors.white.withValues(alpha: 0.15),
                   BlendMode.dstATop,
                 ),
               ),
@@ -125,13 +140,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Teks Sapaan
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _getGreeting(),
-                          style: const TextStyle(color: Colors.white70, fontSize: 14),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -144,7 +161,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
-                    // Ikon Notifikasi & Profil
                     Row(
                       children: [
                         Container(
@@ -173,7 +189,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          // Kartu Melayang (Quick Actions)
           Positioned(
             top: 180,
             left: 24,
@@ -198,7 +213,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     context,
                     icon: Icons.chat_bubble_outline,
                     label: 'AI Chat',
-                    isActive: true, // Warna Mint
+                    isActive: true,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -208,7 +223,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                   ),
-                  // PENGUBAHAN TOMBOL TRACK TICKET DI SINI
                   _buildQuickAction(
                     context,
                     icon: Icons.analytics_outlined,
@@ -284,7 +298,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- KOMPONEN 2: Grid Layanan Perusahaan ---
   Widget _buildCorporateServices() {
     final List<Map<String, dynamic>> services = [
       {
@@ -346,10 +359,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           GridView.builder(
             padding: EdgeInsets.zero,
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(), // Scroll mengikuti halaman utama
+            physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
-              childAspectRatio: 0.65, // Mengatur tinggi tiap kotak grid
+              childAspectRatio: 0.65,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
             ),
@@ -404,76 +417,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- KOMPONEN 3: Kartu Status Tiket (Notifikasi) ---
   Widget _buildNotificationCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return FutureBuilder<List<dynamic>>(
+      future: _ticketsFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        Map<String, dynamic>? latestResolvedTicket;
+        for (var t in snapshot.data!) {
+          String status = (t['status']?.toString() ?? 'OPEN')
+              .trim()
+              .toUpperCase();
+          if (status == 'RESOLVED' || status == 'CLOSED' || status == 'DONE') {
+            latestResolvedTicket = t;
+            break;
+          }
+        }
+
+        if (latestResolvedTicket == null) {
+          return const SizedBox.shrink();
+        }
+
+        final resolvedId =
+            latestResolvedTicket['ticketId']?.toString() ??
+            latestResolvedTicket['id']?.toString() ??
+            '-';
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Garis hijau vertikal
-            Container(
-              width: 4,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF48CEA4),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF48CEA4).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check,
-                color: Color(0xFF48CEA4),
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ticket Resolved',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
-                      fontSize: 14,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF48CEA4),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Update: Ticket #TKT-123 is Resolved',
-                    style: TextStyle(color: Colors.grey, fontSize: 11),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF48CEA4).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Color(0xFF48CEA4),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ticket Resolved',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Update: Ticket #$resolvedId is Resolved',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.grey),
+              ],
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  // --- KOMPONEN 4: Recent Tickets (Dynamic from Backend) ---
   Widget _buildRecentTickets() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -522,9 +564,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(24.0),
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF48CEA4),
-                    ),
+                    child: CircularProgressIndicator(color: Color(0xFF48CEA4)),
                   ),
                 );
               }
@@ -548,8 +588,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   child: const Column(
                     children: [
-                      Icon(Icons.inbox_outlined,
-                          size: 40, color: Colors.grey),
+                      Icon(Icons.inbox_outlined, size: 40, color: Colors.grey),
                       SizedBox(height: 8),
                       Text(
                         'No recent tickets',
@@ -566,8 +605,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: tickets.length,
                 itemBuilder: (context, index) {
-                  final ticket = tickets[index];
-                  return _buildTicketCard(ticket);
+                  return _buildTicketCard(tickets[index]);
                 },
               );
             },
@@ -578,27 +616,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildTicketCard(Map<String, dynamic> ticket) {
-    final String id = ticket['ticketId']?.toString() ?? ticket['id']?.toString() ?? '-';
-    final String problem = ticket['problem']?.toString() ?? ticket['description']?.toString() ?? 'No description';
-    final String status = ticket['status']?.toString() ?? 'Unknown';
+    final String id =
+        ticket['ticketId']?.toString() ?? ticket['id']?.toString() ?? '-';
+    final String problem =
+        ticket['problem']?.toString() ??
+        ticket['description']?.toString() ??
+        'No description';
+
+    final String status = (ticket['status']?.toString() ?? 'OPEN')
+        .trim()
+        .toUpperCase();
     final String createdAt = ticket['createdAt']?.toString() ?? '';
 
-    // Determine status color & icon
     Color statusColor;
     IconData statusIcon;
-    switch (status.toUpperCase()) {
+    switch (status) {
       case 'OPEN':
-        statusColor = const Color(0xFF3B82F6); // blue
+        statusColor = const Color(0xFF3B82F6);
         statusIcon = Icons.fiber_new;
         break;
       case 'IN_PROGRESS':
       case 'IN PROGRESS':
-        statusColor = const Color(0xFFF59E0B); // amber
+        statusColor = const Color(0xFFF59E0B);
         statusIcon = Icons.autorenew;
         break;
       case 'RESOLVED':
       case 'CLOSED':
-        statusColor = const Color(0xFF48CEA4); // mint green
+      case 'DONE':
+        statusColor = const Color(0xFF48CEA4);
         statusIcon = Icons.check_circle_outline;
         break;
       default:
@@ -606,111 +651,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
         statusIcon = Icons.help_outline;
     }
 
-    // Format date nicely
     String formattedDate = createdAt;
     if (createdAt.isNotEmpty) {
       try {
         final dt = DateTime.parse(createdAt);
         formattedDate =
             '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      } catch (_) {
-        // keep original string
-      }
+      } catch (_) {}
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    // KARTU TIKET SEKARANG DIBUNGKUS GESTURE DETECTOR AGAR BISA DIKLIK
+    return GestureDetector(
+      onTap: () {
+        // Tampilkan notifikasi saat diklik
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Membuka detail tiket #$id...'),
+            backgroundColor: const Color(0xFF48CEA4),
+            duration: const Duration(seconds: 2),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Left accent bar
-          Container(
-            width: 4,
-            height: 48,
-            decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.circular(4),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(width: 12),
-          // Status icon
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(statusIcon, color: statusColor, size: 18),
-          ),
-          const SizedBox(width: 12),
-          // Ticket details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '#$id',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  problem,
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  formattedDate,
-                  style: const TextStyle(color: Colors.grey, fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          // Status badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 48,
+              decoration: BoxDecoration(
                 color: statusColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(statusIcon, color: statusColor, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '#$id',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    problem,
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    formattedDate,
+                    style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                status,
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // --- KOMPONEN 5: Banner Promosi ---
   Widget _buildPromoBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B), // Navy Slate
+          color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -747,7 +797,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ElevatedButton(
               onPressed: () {},
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF48CEA4), // Mint Green
+                backgroundColor: const Color(0xFF48CEA4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Wajib ditambahkan untuk ambil token
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -75,7 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return null;
   }
 
-  // 3. Fungsi Utama Mengirim Pesan (Teks + Gambar)
+  // 3. Fungsi Utama Mengirim Pesan (Teks + Gambar) dengan JWT Token
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty && _selectedImage == null) return;
@@ -108,9 +109,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Tembak API Chat Spring Boot
     try {
+      // 👇 AMBIL TOKEN DARI MEMORI 👇
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
       final response = await http.post(
         Uri.parse('http://10.0.2.2:8080/api/chat'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization':
+              'Bearer $token', // 👇 SISIPKAN TOKEN KE DALAM HEADER 👇
+        },
         body: jsonEncode({
           'message': text,
           'ticketId': '', // Kosongkan sementara

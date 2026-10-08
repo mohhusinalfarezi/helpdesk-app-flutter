@@ -61,7 +61,6 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token');
       debugPrint('=== ISI TOKEN DARI MEMORI: $token ===');
-      // Pastikan key ini sama dengan saat login
 
       if (token == null || token.isEmpty) {
         setState(() {
@@ -71,9 +70,9 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
         return;
       }
 
-      // 2. Kirim request dengan membawa token JWT di Header
+      // 2. Kirim request ke my-tickets (BUKAN all lagi)
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+        Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -87,12 +86,17 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
         int resolved = 0;
 
         for (var t in data) {
-          String status = t['status']?.toString().toUpperCase() ?? '';
+          String status = (t['status']?.toString() ?? 'OPEN')
+              .trim()
+              .toUpperCase();
+
           if (status == 'OPEN' ||
               status == 'IN PROGRESS' ||
               status == 'IN_PROGRESS') {
             active++;
-          } else if (status == 'RESOLVED' || status == 'CLOSED') {
+          } else if (status == 'RESOLVED' ||
+              status == 'CLOSED' ||
+              status == 'DONE') {
             resolved++;
           }
         }
@@ -263,7 +267,6 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          // ANGKA AKTIF SEKARANG DINAMIS
           Text(
             '$_activeTicketsCount Active Ticket${_activeTicketsCount != 1 ? 's' : ''}',
             style: const TextStyle(
@@ -473,103 +476,115 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     required Color statusColor,
     required Color statusBgColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.01),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    // DIBUNGKUS GESTURE DETECTOR AGAR BISA DIKLIK
+    return GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Membuka detail tiket #$id...'),
+            backgroundColor: mintGreen,
+            duration: const Duration(seconds: 2),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.confirmation_num_outlined,
-                    color: mintGreen,
-                    size: 16,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.01),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.confirmation_num_outlined,
+                      color: mintGreen,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      id,
+                      style: const TextStyle(
+                        color: greyText,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    id,
-                    style: const TextStyle(
-                      color: greyText,
+                  decoration: BoxDecoration(
+                    color: statusBgColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
                 ),
-                decoration: BoxDecoration(
-                  color: statusBgColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(
-              color: navySlate,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              ],
             ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.folder_open, color: greyText, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    category,
-                    style: const TextStyle(color: greyText, fontSize: 12),
-                  ),
-                ],
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                color: navySlate,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-              Row(
-                children: [
-                  const Icon(Icons.access_time, color: greyText, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    time.length > 10 ? time.substring(0, 10) : time,
-                    style: const TextStyle(color: greyText, fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.0),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.folder_open, color: greyText, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      category,
+                      style: const TextStyle(color: greyText, fontSize: 12),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, color: greyText, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      time.length > 10 ? time.substring(0, 10) : time,
+                      style: const TextStyle(color: greyText, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

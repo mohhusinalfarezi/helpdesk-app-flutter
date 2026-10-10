@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_screen.dart';
+import 'ticket_detail_screen.dart';
 
 class TicketTrackerScreen extends StatefulWidget {
   const TicketTrackerScreen({super.key});
@@ -86,7 +87,9 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
         int resolved = 0;
 
         for (var t in data) {
-          String status = (t['status']?.toString() ?? 'OPEN')
+          String status = (t['currentStatus']?.toString() ??
+                  t['status']?.toString() ??
+                  'OPEN')
               .trim()
               .toUpperCase();
 
@@ -128,31 +131,39 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: mintGreen))
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 24),
-                    _buildPriorityCard(),
-                    const SizedBox(height: 16),
-                    _buildStatsRow(),
-                    const SizedBox(height: 32),
-                    _buildRecentTicketsHeader(),
-                    const SizedBox(height: 16),
-                    _buildTicketContent(),
-                    const SizedBox(height: 80),
-                  ],
+            : RefreshIndicator(
+                color: mintGreen,
+                onRefresh: _fetchTicketsData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 24),
+                      _buildPriorityCard(),
+                      const SizedBox(height: 16),
+                      _buildStatsRow(),
+                      const SizedBox(height: 32),
+                      _buildRecentTicketsHeader(),
+                      const SizedBox(height: 16),
+                      _buildTicketContent(),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
                 ),
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ChatScreen()),
           );
+          if (mounted) {
+            _fetchTicketsData();
+          }
         },
         backgroundColor: mintGreen,
         elevation: 4,
@@ -431,13 +442,40 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
       itemBuilder: (context, index) {
         final ticket = _tickets[index];
         final String id = ticket['ticketId']?.toString() ?? '-';
-        final String status =
-            ticket['status']?.toString().toUpperCase() ?? 'OPEN';
+        final String status = (ticket['currentStatus']?.toString() ??
+                ticket['status']?.toString() ??
+                'OPEN')
+            .trim()
+            .toUpperCase();
         final String title =
             ticket['description']?.toString() ??
             ticket['problem']?.toString() ??
             'Tidak ada detail';
-        final String time = ticket['createdAt']?.toString() ?? 'Baru saja';
+        final dynamic rawDate = ticket['createdAt'] ??
+            ticket['created_at'] ??
+            ticket['report_date'] ??
+            ticket['reportDate'] ??
+            ticket['created_date'] ??
+            ticket['date'] ??
+            ticket['timestamp'];
+
+        String time = '';
+        if (rawDate != null && rawDate.toString().trim().isNotEmpty) {
+          final dateStr = rawDate.toString().trim();
+          try {
+            final dt = DateTime.parse(dateStr).toLocal();
+            time =
+                '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+          } catch (_) {
+            time = dateStr;
+          }
+        }
+
+        if (time.isEmpty) {
+          final now = DateTime.now();
+          time =
+              '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        }
 
         Color sColor = mintGreen;
         Color sBgColor = mintGreen.withValues(alpha: 0.1);
@@ -478,14 +516,21 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
   }) {
     // DIBUNGKUS GESTURE DETECTOR AGAR BISA DIKLIK
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Membuka detail tiket #$id...'),
-            backgroundColor: mintGreen,
-            duration: const Duration(seconds: 2),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TicketDetailScreen(
+              ticketId: id,
+              problem: title,
+              status: status,
+              createdAt: time,
+            ),
           ),
         );
+        if (mounted) {
+          _fetchTicketsData();
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(20),

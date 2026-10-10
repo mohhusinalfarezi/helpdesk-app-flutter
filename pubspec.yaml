@@ -15,6 +15,7 @@ dependencies:
   shared_preferences: ^2.5.5
   google_fonts: ^8.2.1
   image_picker: ^1.2.3
+  easy_localization: ^3.0.7
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +28,4 @@ flutter:
   # Bagian ini sangat sensitif terhadap spasi. Pastikan letaknya persis seperti ini:
   assets:
     - assets/images/header_pattern.png
+    - assets/translations/

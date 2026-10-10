@@ -1,4 +1,5 @@
 import 'dashboard_screen.dart';
+import 'technician_dashboard_screen.dart';
 
 import 'package:flutter/material.dart';
 
@@ -20,6 +21,40 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  String _extractRoleFromJwt(String? token) {
+    if (token == null || token.isEmpty) return 'USER';
+    try {
+      final parts = token.split('.');
+      if (parts.length >= 2) {
+        final payloadPart = parts[1];
+        final normalized = base64Url.normalize(payloadPart);
+        final decodedBytes = base64Url.decode(normalized);
+        final decodedString = utf8.decode(decodedBytes);
+        final Map<String, dynamic> payloadMap = jsonDecode(decodedString);
+
+        dynamic rawRole = payloadMap['role'] ??
+            payloadMap['roles'] ??
+            payloadMap['authorities'] ??
+            payloadMap['roleName'];
+
+        if (rawRole is List && rawRole.isNotEmpty) {
+          rawRole = rawRole.first;
+        }
+
+        if (rawRole != null) {
+          String roleStr = rawRole.toString().trim().toUpperCase();
+          if (roleStr.startsWith('ROLE_')) {
+            roleStr = roleStr.substring(5);
+          }
+          return roleStr;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error decoding role from JWT: $e');
+    }
+    return 'USER';
+  }
 
   Future<void> _login() async {
     final email = _emailController.text;
@@ -46,13 +81,28 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         debugPrint('ISI RESPONSE BACKEND: ${response.body}');
         final data = jsonDecode(response.body);
-        final token = data['token'];
+        final token = data['token']?.toString() ?? '';
         final name = data['name'] ?? 'Pengguna'; // Extract name
 
-        // Menyimpan token JWT ke memori HP
+        // Ekstrak role dari JWT token (fallback ke response body jika ada)
+        String role = _extractRoleFromJwt(token);
+        if (role == 'USER' && data is Map && data['role'] != null) {
+          String resRole = data['role'].toString().trim().toUpperCase();
+          if (resRole.startsWith('ROLE_')) {
+            resRole = resRole.substring(5);
+          }
+          if (resRole.isNotEmpty) {
+            role = resRole;
+          }
+        }
+
+        // Menyimpan token JWT, nama, dan role ke memori HP
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
-        await prefs.setString('user_name', name); // Save name to memory
+        await prefs.setString('user_name', name);
+        await prefs.setString('user_role', role);
+
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -64,14 +114,24 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
 
-        // Navigasi ke halaman Dashboard dan hapus riwayat halaman Login
-        if (mounted) {
+        // Navigasi berdasarkan role (Role-Based Routing)
+        if (role == 'TECHNICIAN' || role == 'ADMIN') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            MaterialPageRoute(
+              builder: (context) => const TechnicianDashboardScreen(),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DashboardScreen(),
+            ),
           );
         }
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Login gagal. Periksa kembali kredensial Anda.'),
@@ -79,6 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan jaringan: $e')));

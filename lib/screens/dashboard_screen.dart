@@ -1,11 +1,15 @@
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_screen.dart'; // Import untuk memanggil AI Hazel
 import 'ticket_tracker_screen.dart'; // Import untuk halaman Pelacak Tiket
+import 'ticket_detail_screen.dart';
+import 'submit_ticket_screen.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -70,35 +74,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 11) {
-      return "Selamat pagi,";
+      return 'greeting_morning'.tr();
     } else if (hour < 15) {
-      return "Selamat siang,";
+      return 'greeting_afternoon'.tr();
     } else if (hour < 18) {
-      return "Selamat sore,";
+      return 'greeting_evening'.tr();
     } else {
-      return "Selamat malam,";
+      return 'greeting_night'.tr();
     }
+  }
+
+  Future<void> _refreshTickets() async {
+    setState(() {
+      _ticketsFuture = fetchTickets();
+    });
+    await _ticketsFuture;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderAndQuickActions(context),
-            const SizedBox(height: 20),
-            _buildCorporateServices(),
-            const SizedBox(height: 16),
-            _buildNotificationCard(),
-            const SizedBox(height: 16),
-            _buildRecentTickets(),
-            const SizedBox(height: 16),
-            _buildPromoBanner(),
-            const SizedBox(height: 40),
-          ],
+      body: RefreshIndicator(
+        color: const Color(0xFF48CEA4),
+        onRefresh: _refreshTickets,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderAndQuickActions(context),
+              const SizedBox(height: 20),
+              _buildCorporateServices(),
+              const SizedBox(height: 16),
+              _buildNotificationCard(),
+              const SizedBox(height: 16),
+              _buildRecentTickets(),
+              const SizedBox(height: 16),
+              _buildPromoBanner(),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -152,7 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Hai, $_userName',
+                          'greeting_hi'.tr(args: [_userName]),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -177,10 +193,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.person, color: Color(0xFF1E293B)),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SettingsScreen(),
+                              ),
+                            );
+                          },
+                          child: const CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.person, color: Color(0xFF1E293B)),
+                          ),
                         ),
                       ],
                     ),
@@ -212,40 +238,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _buildQuickAction(
                     context,
                     icon: Icons.chat_bubble_outline,
-                    label: 'AI Chat',
+                    label: 'ai_chat'.tr(),
                     isActive: true,
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const ChatScreen(),
                         ),
                       );
+                      if (mounted) {
+                        _refreshTickets();
+                      }
                     },
                   ),
                   _buildQuickAction(
                     context,
                     icon: Icons.analytics_outlined,
-                    label: 'Track Ticket',
-                    onTap: () {
-                      Navigator.push(
+                    label: 'track_ticket'.tr(),
+                    onTap: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const TicketTrackerScreen(),
                         ),
                       );
+                      if (mounted) {
+                        _refreshTickets();
+                      }
                     },
                   ),
                   _buildQuickAction(
                     context,
                     icon: Icons.help_outline,
-                    label: 'FAQ',
+                    label: 'faq'.tr(),
                     onTap: () {},
                   ),
                   _buildQuickAction(
                     context,
                     icon: Icons.phone_outlined,
-                    label: 'Call Support',
+                    label: 'call_support'.tr(),
                     onTap: () {},
                   ),
                 ],
@@ -302,43 +334,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Map<String, dynamic>> services = [
       {
         'icon': Icons.menu_book,
-        'title': 'Knowledge\nBase',
-        'subtitle': 'Read help...',
+        'title': 'knowledge_base'.tr(),
       },
       {
         'icon': Icons.add_circle_outline,
-        'title': 'Submit\nTicket',
-        'subtitle': 'File a new i...',
+        'title': 'submit_ticket'.tr(),
       },
       {
         'icon': Icons.chat_bubble_outline,
-        'title': 'Live Chat',
-        'subtitle': 'Talk with s...',
+        'title': 'live_chat'.tr(),
       },
       {
         'icon': Icons.email_outlined,
-        'title': 'Email\nSupport',
-        'subtitle': 'Send us a...',
+        'title': 'email_support'.tr(),
       },
       {
         'icon': Icons.layers_outlined,
-        'title': 'Service\nCatalog',
-        'subtitle': 'Request h...',
+        'title': 'service_catalog'.tr(),
       },
       {
         'icon': Icons.campaign_outlined,
-        'title': 'Announc\nements',
-        'subtitle': 'System sta...',
+        'title': 'announcements'.tr(),
       },
       {
         'icon': Icons.favorite_border,
-        'title': 'Feedback',
-        'subtitle': 'Tell us your...',
+        'title': 'feedback'.tr(),
       },
       {
         'icon': Icons.settings_outlined,
-        'title': 'Settings',
-        'subtitle': 'App config...',
+        'title': 'settings'.tr(),
       },
     ];
 
@@ -347,9 +371,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Corporate Services',
-            style: TextStyle(
+          Text(
+            'corporate_services'.tr(),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1E293B),
@@ -362,52 +386,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
-              childAspectRatio: 0.65,
+              childAspectRatio: 0.85,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
             ),
             itemCount: services.length,
             itemBuilder: (context, index) {
-              return Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      services[index]['icon'],
-                      color: const Color(0xFF48CEA4),
-                      size: 24,
-                    ),
-                    const Spacer(),
-                    Text(
-                      services[index]['title'],
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+              final service = services[index];
+              final isSubmitTicket =
+                  service['icon'] == Icons.add_circle_outline;
+              final isSettings =
+                  service['icon'] == Icons.settings_outlined;
+
+              return GestureDetector(
+                onTap: isSubmitTicket
+                    ? () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SubmitTicketScreen(),
+                          ),
+                        );
+                        if (result == true && mounted) {
+                          _refreshTickets();
+                        }
+                      }
+                    : isSettings
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SettingsScreen(),
+                              ),
+                            );
+                          }
+                        : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
                       ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      services[index]['subtitle'],
-                      style: const TextStyle(fontSize: 9, color: Colors.grey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF48CEA4).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          service['icon'],
+                          color: const Color(0xFF48CEA4),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        service['title'],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -488,9 +548,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Ticket Resolved',
-                        style: TextStyle(
+                      Text(
+                        'ticket_resolved'.tr(),
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1E293B),
                           fontSize: 14,
@@ -498,7 +558,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Update: Ticket #$resolvedId is Resolved',
+                        'ticket_resolved_update'.tr(args: [resolvedId]),
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 11,
@@ -525,9 +585,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Recent Tickets',
-                style: TextStyle(
+              Text(
+                'recent_tickets'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
@@ -539,13 +599,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _ticketsFuture = fetchTickets();
                   });
                 },
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.refresh, size: 16, color: Color(0xFF48CEA4)),
-                    SizedBox(width: 4),
+                    const Icon(Icons.refresh, size: 16, color: Color(0xFF48CEA4)),
+                    const SizedBox(width: 4),
                     Text(
-                      'Refresh',
-                      style: TextStyle(
+                      'refresh'.tr(),
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF48CEA4),
@@ -586,13 +646,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
-                      Icon(Icons.inbox_outlined, size: 40, color: Colors.grey),
-                      SizedBox(height: 8),
+                      const Icon(Icons.inbox_outlined, size: 40, color: Colors.grey),
+                      const SizedBox(height: 8),
                       Text(
-                        'No recent tickets',
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                        'no_recent_tickets'.tr(),
+                        style: const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],
                   ),
@@ -621,12 +681,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String problem =
         ticket['problem']?.toString() ??
         ticket['description']?.toString() ??
-        'No description';
+        'no_description'.tr();
 
-    final String status = (ticket['status']?.toString() ?? 'OPEN')
+    final String status = (ticket['currentStatus']?.toString() ??
+            ticket['status']?.toString() ??
+            'OPEN')
         .trim()
         .toUpperCase();
-    final String createdAt = ticket['createdAt']?.toString() ?? '';
 
     Color statusColor;
     IconData statusIcon;
@@ -651,26 +712,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
         statusIcon = Icons.help_outline;
     }
 
-    String formattedDate = createdAt;
-    if (createdAt.isNotEmpty) {
+    final dynamic rawDate = ticket['createdAt'] ??
+        ticket['created_at'] ??
+        ticket['report_date'] ??
+        ticket['reportDate'] ??
+        ticket['created_date'] ??
+        ticket['date'] ??
+        ticket['timestamp'];
+
+    String formattedDate = '';
+    if (rawDate != null && rawDate.toString().trim().isNotEmpty) {
+      final dateStr = rawDate.toString().trim();
       try {
-        final dt = DateTime.parse(createdAt);
+        final dt = DateTime.parse(dateStr).toLocal();
         formattedDate =
-            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      } catch (_) {}
+            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {
+        formattedDate = dateStr;
+      }
+    }
+
+    if (formattedDate.isEmpty) {
+      final now = DateTime.now();
+      formattedDate =
+          '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     }
 
     // KARTU TIKET SEKARANG DIBUNGKUS GESTURE DETECTOR AGAR BISA DIKLIK
     return GestureDetector(
-      onTap: () {
-        // Tampilkan notifikasi saat diklik
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Membuka detail tiket #$id...'),
-            backgroundColor: const Color(0xFF48CEA4),
-            duration: const Duration(seconds: 2),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TicketDetailScreen(
+              ticketId: id,
+              problem: problem,
+              status: status,
+              createdAt: formattedDate,
+            ),
           ),
         );
+        if (mounted) {
+          _refreshTickets();
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -774,22 +858,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: const Icon(Icons.star_border, color: Color(0xFF48CEA4)),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Rate our Service',
-                    style: TextStyle(
+                    'rate_our_service'.tr(),
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       fontSize: 14,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'Help us improve the IT desk',
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                    'rate_service_desc'.tr(),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ],
               ),
@@ -803,9 +887,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Rate Now',
-                style: TextStyle(
+              child: Text(
+                'rate_now'.tr(),
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,

@@ -10,6 +10,8 @@ import 'ticket_tracker_screen.dart'; // Import untuk halaman Pelacak Tiket
 import 'ticket_detail_screen.dart';
 import 'submit_ticket_screen.dart';
 import 'settings_screen.dart';
+import 'faq_screen.dart';
+import 'notification_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,12 +23,14 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _userName = "Pengguna";
   late Future<List<dynamic>> _ticketsFuture;
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
     _ticketsFuture = fetchTickets();
+    _fetchUnreadCount();
   }
 
   Future<List<dynamic>> fetchTickets() async {
@@ -84,11 +88,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _fetchUnreadCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
+      if (token == null || token.isEmpty) return;
+
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8080/api/notifications'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final unread = data.where((n) {
+          return n['isRead'] != true && n['read'] != true;
+        }).length;
+
+        if (mounted) {
+          setState(() {
+            _unreadNotificationCount = unread;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching unread notification count: $e');
+    }
+  }
+
   Future<void> _refreshTickets() async {
     setState(() {
       _ticketsFuture = fetchTickets();
     });
+    _fetchUnreadCount();
     await _ticketsFuture;
+  }
+
+  void _showInDevelopmentSnackBar() {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('feature_in_development'.tr()),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -184,12 +232,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.notifications_none,
-                              color: Colors.white,
+                          child: Badge.count(
+                            count: _unreadNotificationCount,
+                            isLabelVisible: _unreadNotificationCount > 0,
+                            backgroundColor: const Color(0xFFFF5252),
+                            textColor: Colors.white,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                              ),
+                              onPressed: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const NotificationScreen(),
+                                  ),
+                                );
+                                if (mounted) {
+                                  _fetchUnreadCount();
+                                }
+                              },
                             ),
-                            onPressed: () {},
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -272,13 +337,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     context,
                     icon: Icons.help_outline,
                     label: 'faq'.tr(),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FaqScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildQuickAction(
                     context,
                     icon: Icons.phone_outlined,
                     label: 'call_support'.tr(),
-                    onTap: () {},
+                    onTap: _showInDevelopmentSnackBar,
                   ),
                 ],
               ),
@@ -420,7 +492,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             );
                           }
-                        : null,
+                        : _showInDevelopmentSnackBar,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,

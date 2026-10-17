@@ -1,11 +1,18 @@
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_screen.dart';
 import 'ticket_detail_screen.dart';
+import 'notification_screen.dart';
+
+// ────────────────────────────────────────────────────────────
+// Enum untuk opsi sort
+// ────────────────────────────────────────────────────────────
+enum SortOption { newest, oldest, az, za }
 
 class TicketTrackerScreen extends StatefulWidget {
   const TicketTrackerScreen({super.key});
@@ -15,27 +22,47 @@ class TicketTrackerScreen extends StatefulWidget {
 }
 
 class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
+  // ── Warna tema ─────────────────────────────────────────────
   static const Color backgroundColor = Color(0xFFF8FAFC);
   static const Color mintGreen = Color(0xFF48CEA4);
   static const Color navySlate = Color(0xFF1E293B);
   static const Color greyText = Color(0xFF94A3B8);
 
+  // ── State utama ────────────────────────────────────────────
   bool _isLoading = true;
   String _errorMessage = '';
   List<dynamic> _tickets = [];
   String _userName = "Pengguna";
 
-  // Variabel untuk data dinamis kartu hijau dan statistik
   int _activeTicketsCount = 0;
   int _resolvedTicketsCount = 0;
+
+  // ── State search / sort / filter ───────────────────────────
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  SortOption _currentSort = SortOption.newest;
+  String _currentFilter = 'ALL'; // ALL, OPEN, IN_PROGRESS, RESOLVED, CLOSED
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
     _fetchTicketsData();
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ── Memuat nama user dari SharedPreferences ────────────────
   Future<void> _loadUserName() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -43,14 +70,16 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     });
   }
 
+  // ── Greeting berdasarkan waktu & lokalisasi ────────────────
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 11) return "Selamat pagi,";
-    if (hour < 15) return "Selamat siang,";
-    if (hour < 18) return "Selamat sore,";
-    return "Selamat malam,";
+    if (hour < 11) return 'greeting_morning'.tr();
+    if (hour < 15) return 'greeting_afternoon'.tr();
+    if (hour < 18) return 'greeting_evening'.tr();
+    return 'greeting_night'.tr();
   }
 
+  // ── Fetch tiket dari API ──────────────────────────────────
   Future<void> _fetchTicketsData() async {
     setState(() {
       _isLoading = true;
@@ -58,20 +87,18 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     });
 
     try {
-      // 1. Ambil token dari memori perangkat
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token');
       debugPrint('=== ISI TOKEN DARI MEMORI: $token ===');
 
       if (token == null || token.isEmpty) {
         setState(() {
-          _errorMessage = 'Sesi login tidak valid. Silakan login ulang.';
+          _errorMessage = 'session_invalid'.tr();
           _isLoading = false;
         });
         return;
       }
 
-      // 2. Kirim request ke my-tickets (BUKAN all lagi)
       final response = await http.get(
         Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
         headers: {
@@ -112,18 +139,125 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
         });
       } else {
         setState(() {
-          _errorMessage = 'Gagal memuat API (Status: ${response.statusCode})';
+          _errorMessage = 'api_load_failed'.tr(args: [response.statusCode.toString()]);
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Koneksi Ditolak/Error: $e';
+        _errorMessage = 'connection_error'.tr(args: [e.toString()]);
         _isLoading = false;
       });
     }
   }
 
+  // ── Helper: normalisasi status ─────────────────────────────
+  String _normalizeStatus(dynamic ticket) {
+    return (ticket['currentStatus']?.toString() ??
+            ticket['status']?.toString() ??
+            'OPEN')
+        .trim()
+        .toUpperCase()
+        .replaceAll(' ', '_'); // "IN PROGRESS" → "IN_PROGRESS"
+  }
+
+  // ── Helper: ambil judul tiket ──────────────────────────────
+  String _getTicketTitle(dynamic ticket) {
+    return ticket['description']?.toString() ??
+        ticket['problem']?.toString() ??
+        'no_description'.tr();
+  }
+
+  // ── Helper: parse tanggal tiket ────────────────────────────
+  DateTime? _parseTicketDate(dynamic ticket) {
+    final dynamic rawDate = ticket['createdAt'] ??
+        ticket['created_at'] ??
+        ticket['report_date'] ??
+        ticket['reportDate'] ??
+        ticket['created_date'] ??
+        ticket['date'] ??
+        ticket['timestamp'];
+
+    if (rawDate != null && rawDate.toString().trim().isNotEmpty) {
+      try {
+        return DateTime.parse(rawDate.toString().trim()).toLocal();
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // ── Format tanggal untuk tampilan ──────────────────────────
+  String _formatDate(dynamic ticket) {
+    final dt = _parseTicketDate(ticket);
+    if (dt != null) {
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
+          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+    final now = DateTime.now();
+    return '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} '
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  }
+
+  // ── Filtering + Searching + Sorting logic ─────────────────
+  List<dynamic> get _processedTickets {
+    List<dynamic> result = List<dynamic>.from(_tickets);
+
+    // 1. Filter berdasarkan status
+    if (_currentFilter != 'ALL') {
+      result = result.where((t) {
+        final status = _normalizeStatus(t);
+        if (_currentFilter == 'RESOLVED') {
+          return status == 'RESOLVED' || status == 'DONE';
+        }
+        return status == _currentFilter;
+      }).toList();
+    }
+
+    // 2. Filter berdasarkan pencarian (ID atau deskripsi)
+    if (_searchQuery.isNotEmpty) {
+      result = result.where((t) {
+        final id = (t['ticketId']?.toString() ?? '').toLowerCase();
+        final title = _getTicketTitle(t).toLowerCase();
+        return id.contains(_searchQuery) || title.contains(_searchQuery);
+      }).toList();
+    }
+
+    // 3. Sort
+    switch (_currentSort) {
+      case SortOption.newest:
+        result.sort((a, b) {
+          final da = _parseTicketDate(a) ?? DateTime(2000);
+          final db = _parseTicketDate(b) ?? DateTime(2000);
+          return db.compareTo(da);
+        });
+        break;
+      case SortOption.oldest:
+        result.sort((a, b) {
+          final da = _parseTicketDate(a) ?? DateTime(2000);
+          final db = _parseTicketDate(b) ?? DateTime(2000);
+          return da.compareTo(db);
+        });
+        break;
+      case SortOption.az:
+        result.sort((a, b) => _getTicketTitle(a)
+            .toLowerCase()
+            .compareTo(_getTicketTitle(b).toLowerCase()));
+        break;
+      case SortOption.za:
+        result.sort((a, b) => _getTicketTitle(b)
+            .toLowerCase()
+            .compareTo(_getTicketTitle(a).toLowerCase()));
+        break;
+    }
+
+    return result;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  BUILD
+  // ══════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,7 +279,13 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
                       _buildPriorityCard(),
                       const SizedBox(height: 16),
                       _buildStatsRow(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+                      _buildSearchBar(),
+                      const SizedBox(height: 16),
+                      _buildSortAndFilterRow(),
+                      const SizedBox(height: 8),
+                      _buildFilterChips(),
+                      const SizedBox(height: 24),
                       _buildRecentTicketsHeader(),
                       const SizedBox(height: 16),
                       _buildTicketContent(),
@@ -173,6 +313,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     );
   }
 
+  // ── Header ────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -210,16 +351,26 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
         ),
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-              ),
-              child: const Icon(
-                Icons.notifications_none,
-                color: navySlate,
-                size: 20,
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationScreen(),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
+                child: const Icon(
+                  Icons.notifications_none,
+                  color: navySlate,
+                  size: 20,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -234,6 +385,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     );
   }
 
+  // ── Priority Card (Kartu hijau) ───────────────────────────
   Widget _buildPriorityCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -259,7 +411,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
                   const Icon(Icons.shield_outlined, color: navySlate, size: 16),
                   const SizedBox(width: 8),
                   Text(
-                    'HELPDESK PRIORITY',
+                    'helpdesk_priority'.tr(),
                     style: TextStyle(
                       color: navySlate.withValues(alpha: 0.8),
                       fontWeight: FontWeight.bold,
@@ -268,18 +420,31 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
                   ),
                 ],
               ),
-              Text(
-                'Live Update',
-                style: TextStyle(
-                  color: navySlate.withValues(alpha: 0.6),
-                  fontSize: 11,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: navySlate.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'live_update'.tr(),
+                    style: TextStyle(
+                      color: navySlate.withValues(alpha: 0.6),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            '$_activeTicketsCount Active Ticket${_activeTicketsCount != 1 ? 's' : ''}',
+            '$_activeTicketsCount ${'active_tickets_count'.tr()}',
             style: const TextStyle(
               color: navySlate,
               fontSize: 28,
@@ -289,8 +454,8 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
           const SizedBox(height: 8),
           Text(
             _activeTicketsCount > 0
-                ? 'Assigned to technical engineering\nqueue for immediate action.'
-                : 'All systems operational.\nNo active issues currently.',
+                ? 'active_issues_exist'.tr()
+                : 'all_systems_operational'.tr(),
             style: TextStyle(
               color: navySlate.withValues(alpha: 0.7),
               fontSize: 13,
@@ -302,24 +467,33 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     );
   }
 
+  // ── Baris statistik ────────────────────────────────────────
   Widget _buildStatsRow() {
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard('TOTAL TIKET', _tickets.length.toString()),
+          child: _buildStatCard(
+            'total_tickets'.tr(),
+            _tickets.length.toString(),
+            Icons.receipt_long_outlined,
+            const Color(0xFF448AFF),
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: _buildStatCard(
-            'TIKET SELESAI',
+            'resolved_tickets'.tr(),
             _resolvedTicketsCount.toString(),
+            Icons.check_circle_outline,
+            mintGreen,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(String title, String value) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color iconColor) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
@@ -336,13 +510,22 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: greyText,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: iconColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: greyText,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
@@ -358,13 +541,241 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     );
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  SEARCH BAR
+  // ══════════════════════════════════════════════════════════
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(fontSize: 14, color: navySlate),
+        decoration: InputDecoration(
+          hintText: 'search_ticket_hint'.tr(),
+          hintStyle: const TextStyle(color: greyText, fontSize: 13),
+          prefixIcon: const Icon(Icons.search, color: greyText, size: 20),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? GestureDetector(
+                  onTap: () {
+                    _searchController.clear();
+                  },
+                  child: const Icon(Icons.close, color: greyText, size: 18),
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  SORT DROPDOWN + JUMLAH HASIL
+  // ══════════════════════════════════════════════════════════
+  Widget _buildSortAndFilterRow() {
+    final processed = _processedTickets;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Jumlah hasil
+        Text(
+          '${processed.length} ${'recent_tickets'.tr()}',
+          style: const TextStyle(
+            color: greyText,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        // Sort dropdown
+        Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<SortOption>(
+              value: _currentSort,
+              icon: const Icon(Icons.unfold_more, size: 16, color: greyText),
+              isDense: true,
+              style: const TextStyle(fontSize: 12, color: navySlate),
+              items: [
+                DropdownMenuItem(
+                  value: SortOption.newest,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.arrow_downward,
+                          size: 14, color: mintGreen),
+                      const SizedBox(width: 6),
+                      Text('sort_newest'.tr()),
+                    ],
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SortOption.oldest,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.arrow_upward,
+                          size: 14, color: mintGreen),
+                      const SizedBox(width: 6),
+                      Text('sort_oldest'.tr()),
+                    ],
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SortOption.az,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort_by_alpha,
+                          size: 14, color: mintGreen),
+                      const SizedBox(width: 6),
+                      Text('sort_az'.tr()),
+                    ],
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: SortOption.za,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort_by_alpha,
+                          size: 14, color: mintGreen),
+                      const SizedBox(width: 6),
+                      Text('sort_za'.tr()),
+                    ],
+                  ),
+                ),
+              ],
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _currentSort = val);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  FILTER CHIPS  (Horizontal scrollable)
+  // ══════════════════════════════════════════════════════════
+  Widget _buildFilterChips() {
+    final filters = <Map<String, dynamic>>[
+      {
+        'key': 'ALL',
+        'label': 'filter_all',
+        'icon': Icons.all_inclusive,
+        'color': navySlate,
+      },
+      {
+        'key': 'OPEN',
+        'label': 'filter_open',
+        'icon': Icons.error_outline,
+        'color': const Color(0xFFFF5252),
+      },
+      {
+        'key': 'IN_PROGRESS',
+        'label': 'filter_in_progress',
+        'icon': Icons.hourglass_top,
+        'color': const Color(0xFF448AFF),
+      },
+      {
+        'key': 'RESOLVED',
+        'label': 'filter_resolved',
+        'icon': Icons.check_circle_outline,
+        'color': mintGreen,
+      },
+      {
+        'key': 'CLOSED',
+        'label': 'filter_closed',
+        'icon': Icons.lock_outline,
+        'color': const Color(0xFF78909C),
+      },
+    ];
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: filters.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final f = filters[index];
+          final isActive = _currentFilter == f['key'];
+          final Color chipColor = f['color'] as Color;
+
+          return GestureDetector(
+            onTap: () {
+              setState(() => _currentFilter = f['key'] as String);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? chipColor.withValues(alpha: 0.12)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isActive
+                      ? chipColor.withValues(alpha: 0.5)
+                      : Colors.grey.withValues(alpha: 0.15),
+                  width: isActive ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    f['icon'] as IconData,
+                    size: 14,
+                    color: isActive ? chipColor : greyText,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    (f['label'] as String).tr(),
+                    style: TextStyle(
+                      color: isActive ? chipColor : greyText,
+                      fontSize: 12,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Recent Tickets header ─────────────────────────────────
   Widget _buildRecentTicketsHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Recent Tickets',
-          style: TextStyle(
+        Text(
+          'recent_tickets'.tr(),
+          style: const TextStyle(
             color: navySlate,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -377,7 +788,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
               const Icon(Icons.refresh, size: 16, color: mintGreen),
               const SizedBox(width: 4),
               Text(
-                'Refresh',
+                'refresh'.tr(),
                 style: TextStyle(
                   color: mintGreen.withValues(alpha: 0.9),
                   fontSize: 13,
@@ -391,7 +802,11 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     );
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  KONTEN TIKET (termasuk state kosong & error)
+  // ══════════════════════════════════════════════════════════
   Widget _buildTicketContent() {
+    // Error state
     if (_errorMessage.isNotEmpty) {
       return Container(
         width: double.infinity,
@@ -414,6 +829,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
       );
     }
 
+    // Tidak ada tiket sama sekali
     if (_tickets.isEmpty) {
       return Container(
         width: double.infinity,
@@ -422,89 +838,111 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Column(
+        child: Column(
           children: [
-            Icon(Icons.inbox_outlined, size: 40, color: Colors.grey),
-            SizedBox(height: 8),
+            const Icon(Icons.inbox_outlined, size: 40, color: Colors.grey),
+            const SizedBox(height: 8),
             Text(
-              'Belum ada tiket yang terbuat',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              'no_tickets_created'.tr(),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ],
         ),
       );
     }
 
+    // Ada tiket tapi setelah filter/search tidak ada yang cocok
+    final processed = _processedTickets;
+    if (processed.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.search_off, size: 44, color: greyText),
+            const SizedBox(height: 12),
+            Text(
+              'no_tickets_found'.tr(),
+              style: const TextStyle(
+                color: navySlate,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'no_tickets_match'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: greyText, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // List tiket
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _tickets.length,
+      itemCount: processed.length,
       itemBuilder: (context, index) {
-        final ticket = _tickets[index];
+        final ticket = processed[index];
         final String id = ticket['ticketId']?.toString() ?? '-';
-        final String status = (ticket['currentStatus']?.toString() ??
-                ticket['status']?.toString() ??
-                'OPEN')
-            .trim()
-            .toUpperCase();
-        final String title =
-            ticket['description']?.toString() ??
-            ticket['problem']?.toString() ??
-            'Tidak ada detail';
-        final dynamic rawDate = ticket['createdAt'] ??
-            ticket['created_at'] ??
-            ticket['report_date'] ??
-            ticket['reportDate'] ??
-            ticket['created_date'] ??
-            ticket['date'] ??
-            ticket['timestamp'];
+        final String status = _normalizeStatus(ticket);
+        final String displayStatus = status.replaceAll('_', ' ');
+        final String title = _getTicketTitle(ticket);
+        final String time = _formatDate(ticket);
 
-        String time = '';
-        if (rawDate != null && rawDate.toString().trim().isNotEmpty) {
-          final dateStr = rawDate.toString().trim();
-          try {
-            final dt = DateTime.parse(dateStr).toLocal();
-            time =
-                '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-          } catch (_) {
-            time = dateStr;
-          }
-        }
-
-        if (time.isEmpty) {
-          final now = DateTime.now();
-          time =
-              '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-        }
-
-        Color sColor = mintGreen;
-        Color sBgColor = mintGreen.withValues(alpha: 0.1);
-        if (status == 'OPEN') {
-          sColor = const Color(0xFFFF5252);
-          sBgColor = const Color(0xFFFF5252).withValues(alpha: 0.1);
-        } else if (status == 'IN PROGRESS' || status == 'IN_PROGRESS') {
-          sColor = const Color(0xFF448AFF);
-          sBgColor = const Color(0xFF448AFF).withValues(alpha: 0.1);
+        // Warna & ikon berdasarkan status
+        Color sColor;
+        Color sBgColor;
+        IconData statusIcon;
+        switch (status) {
+          case 'OPEN':
+            sColor = const Color(0xFFFF5252);
+            sBgColor = const Color(0xFFFF5252).withValues(alpha: 0.1);
+            statusIcon = Icons.error_outline;
+            break;
+          case 'IN_PROGRESS':
+            sColor = const Color(0xFF448AFF);
+            sBgColor = const Color(0xFF448AFF).withValues(alpha: 0.1);
+            statusIcon = Icons.hourglass_top;
+            break;
+          case 'CLOSED':
+            sColor = const Color(0xFF78909C);
+            sBgColor = const Color(0xFF78909C).withValues(alpha: 0.1);
+            statusIcon = Icons.lock_outline;
+            break;
+          default: // RESOLVED / DONE
+            sColor = mintGreen;
+            sBgColor = mintGreen.withValues(alpha: 0.1);
+            statusIcon = Icons.check_circle_outline;
         }
 
         return Column(
           children: [
             _buildTicketItem(
               id: id,
-              status: status,
+              status: displayStatus,
               title: title,
               category: 'IT Support',
               time: time,
               statusColor: sColor,
               statusBgColor: sBgColor,
+              statusIcon: statusIcon,
             ),
-            if (index < _tickets.length - 1) const SizedBox(height: 16),
+            if (index < processed.length - 1) const SizedBox(height: 16),
           ],
         );
       },
     );
   }
 
+  // ── Widget per-item tiket ─────────────────────────────────
   Widget _buildTicketItem({
     required String id,
     required String status,
@@ -513,6 +951,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     required String time,
     required Color statusColor,
     required Color statusBgColor,
+    required IconData statusIcon,
   }) {
     // DIBUNGKUS GESTURE DETECTOR AGAR BISA DIKLIK
     return GestureDetector(
@@ -579,13 +1018,20 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
                     color: statusBgColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 12, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -601,7 +1047,8 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12.0),
-              child: Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+              child:
+                  Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

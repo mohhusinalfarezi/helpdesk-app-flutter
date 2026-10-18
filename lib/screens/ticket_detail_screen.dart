@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/rating_dialog.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final String ticketId;
@@ -26,6 +28,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   late String _status;
   late String _createdAt;
   bool _isRefreshing = false;
+  dynamic _ticketData;
+  int? _rating;
+  String? _feedback;
 
   @override
   void initState() {
@@ -94,9 +99,18 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               }
             }
 
+            final dynamic rawRating = matched['rating'];
+            final int? newRating = (rawRating is num)
+                ? rawRating.toInt()
+                : int.tryParse(rawRating?.toString() ?? '');
+            final String? newFeedback = matched['feedback']?.toString();
+
             setState(() {
               _status = newStatus;
               _problem = newProblem;
+              _ticketData = matched;
+              _rating = newRating;
+              _feedback = newFeedback;
               if (newDate.isNotEmpty) {
                 _createdAt = newDate;
               }
@@ -436,6 +450,156 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   ),
                 ),
               ),
+
+              // RATING & FEEDBACK SECTION JIKA TIKET RESOLVED
+              if (isResolved)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 24),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _rating != null && _rating! > 0
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Color(0xFFD97706),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'already_reviewed'.tr(),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: List.generate(5, (starIdx) {
+                                      return Icon(
+                                        starIdx < _rating!
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        size: 20,
+                                        color: const Color(0xFFFFB800),
+                                      );
+                                    }),
+                                  ),
+                                ],
+                              ),
+                              if (_feedback != null &&
+                                  _feedback!.trim().isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '"$_feedback"',
+                                    style: const TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      color: Color(0xFF475569),
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'rating_title'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'rating_subtitle'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    showRatingDialog(
+                                      context,
+                                      _ticketData ??
+                                          {
+                                            'id': widget.ticketId,
+                                            'ticketId': widget.ticketId,
+                                          },
+                                      onSuccess: _fetchTicketDetails,
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.star_rounded,
+                                    size: 20,
+                                    color: Color(0xFFD97706),
+                                  ),
+                                  label: Text(
+                                    'give_feedback'.tr(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF92400E),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: const Color(0xFFFEF3C7),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: const BorderSide(
+                                        color: Color(0xFFFDE68A),
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
               const SizedBox(height: 40),
             ],
           ),

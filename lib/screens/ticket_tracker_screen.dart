@@ -6,8 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_screen.dart';
+import 'ticket_chat_screen.dart';
 import 'ticket_detail_screen.dart';
 import 'notification_screen.dart';
+import '../widgets/rating_dialog.dart';
 
 // ────────────────────────────────────────────────────────────
 // Enum untuk opsi sort
@@ -934,6 +936,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
               statusColor: sColor,
               statusBgColor: sBgColor,
               statusIcon: statusIcon,
+              ticket: ticket,
             ),
             if (index < processed.length - 1) const SizedBox(height: 16),
           ],
@@ -952,7 +955,16 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
     required Color statusColor,
     required Color statusBgColor,
     required IconData statusIcon,
+    required dynamic ticket,
   }) {
+    final bool isResolved = status.toUpperCase() == 'RESOLVED' ||
+        status.toUpperCase() == 'DONE';
+    final dynamic rawRating = ticket['rating'];
+    final int? rating = (rawRating is num)
+        ? rawRating.toInt()
+        : int.tryParse(rawRating?.toString() ?? '');
+    final bool hasReviewed = rating != null && rating > 0;
+
     // DIBUNGKUS GESTURE DETECTOR AGAR BISA DIKLIK
     return GestureDetector(
       onTap: () async {
@@ -1071,10 +1083,128 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
                       time.length > 10 ? time.substring(0, 10) : time,
                       style: const TextStyle(color: greyText, fontSize: 12),
                     ),
+                    const SizedBox(width: 12),
+                    // Tombol Chat
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TicketChatScreen(
+                              ticketId: id,
+                              ticketCode: id,
+                              ticketTitle: title,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: mintGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_outline,
+                          size: 16,
+                          color: mintGreen,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
+            // Tombol atau Badge Rating & Feedback untuk tiket RESOLVED
+            if (isResolved) ...[
+              if (hasReviewed)
+                Container(
+                  margin: const EdgeInsets.only(top: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(5, (starIdx) {
+                          return Icon(
+                            starIdx < rating
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            size: 18,
+                            color: const Color(0xFFFFB800),
+                          );
+                        }),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            size: 14,
+                            color: Color(0xFFD97706),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'already_reviewed'.tr(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFD97706),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 14.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        showRatingDialog(
+                          context,
+                          ticket,
+                          onSuccess: _fetchTicketsData,
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.star_rounded,
+                        size: 18,
+                        color: Color(0xFFD97706),
+                      ),
+                      label: Text(
+                        'give_feedback'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF92400E),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: const Color(0xFFFEF3C7),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Color(0xFFFDE68A)),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),

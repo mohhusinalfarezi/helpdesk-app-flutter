@@ -74,6 +74,13 @@
   "no_notifications": "No notifications",
   "no_notifications_desc": "All new notifications will appear here.",
   "mark_as_read": "Mark as read",
-  "mark_all_as_read": "Mark all as read"
+  "mark_all_as_read": "Mark all as read",
+  "give_feedback": "Give Review",
+  "rating_title": "Rate Our Service",
+  "rating_subtitle": "How satisfied are you with this resolution?",
+  "feedback_hint": "Write a review or feedback for the technician...",
+  "submit_review": "Submit Review",
+  "feedback_success": "Thank you for your review!",
+  "already_reviewed": "Reviewed"
 }
 

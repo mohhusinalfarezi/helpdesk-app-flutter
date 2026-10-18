@@ -12,6 +12,7 @@ import 'submit_ticket_screen.dart';
 import 'settings_screen.dart';
 import 'faq_screen.dart';
 import 'notification_screen.dart';
+import 'ticket_chat_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -137,6 +138,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  /// Buka Live Chat: cari tiket aktif pertama lalu buka ruang obrolan.
+  /// Jika tidak ada tiket aktif, arahkan pengguna ke Buat/Lacak Tiket.
+  void _openLiveChat() async {
+    try {
+      final tickets = await _ticketsFuture;
+
+      // Cari tiket aktif (OPEN atau IN_PROGRESS)
+      Map<String, dynamic>? activeTicket;
+      for (var t in tickets) {
+        final status = (t['currentStatus']?.toString() ??
+                t['status']?.toString() ??
+                'OPEN')
+            .trim()
+            .toUpperCase();
+        if (status == 'OPEN' ||
+            status == 'IN_PROGRESS' ||
+            status == 'IN PROGRESS') {
+          activeTicket = t;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+
+      if (activeTicket != null) {
+        final ticketId = activeTicket['ticketId']?.toString() ??
+            activeTicket['id']?.toString() ??
+            '';
+        final ticketDesc = activeTicket['description']?.toString() ??
+            activeTicket['problem']?.toString();
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TicketChatScreen(
+              ticketId: ticketId,
+              ticketCode: ticketId,
+              ticketTitle: ticketDesc,
+            ),
+          ),
+        );
+      } else {
+        // Tidak ada tiket aktif – beri notifikasi
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Tidak ada tiket aktif. Silakan buat tiket baru terlebih dahulu.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Buat Tiket',
+              textColor: Colors.white,
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SubmitTicketScreen(),
+                  ),
+                );
+                if (result == true && mounted) {
+                  _refreshTickets();
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memuat tiket. Silakan coba lagi.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -469,6 +552,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   service['icon'] == Icons.add_circle_outline;
               final isSettings =
                   service['icon'] == Icons.settings_outlined;
+              final isLiveChat =
+                  service['icon'] == Icons.chat_bubble_outline;
 
               return GestureDetector(
                 onTap: isSubmitTicket
@@ -492,7 +577,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             );
                           }
-                        : _showInDevelopmentSnackBar,
+                        : isLiveChat
+                            ? () => _openLiveChat()
+                            : _showInDevelopmentSnackBar,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,

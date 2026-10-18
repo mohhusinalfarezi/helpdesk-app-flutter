@@ -74,6 +74,13 @@
   "no_notifications": "Belum ada notifikasi",
   "no_notifications_desc": "Semua notifikasi baru akan muncul di sini.",
   "mark_as_read": "Tandai sudah dibaca",
-  "mark_all_as_read": "Tandai semua dibaca"
+  "mark_all_as_read": "Tandai semua dibaca",
+  "give_feedback": "Beri Ulasan",
+  "rating_title": "Nilai Layanan Kami",
+  "rating_subtitle": "Bagaimana kepuasan Anda terhadap penanganan tiket ini?",
+  "feedback_hint": "Tulis ulasan atau masukan untuk teknisi...",
+  "submit_review": "Kirim Ulasan",
+  "feedback_success": "Terima kasih atas ulasan Anda!",
+  "already_reviewed": "Ulasan Terkirim"
 }
 

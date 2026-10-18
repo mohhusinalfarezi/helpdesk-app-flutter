@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
+import 'ticket_chat_screen.dart';
 import 'ticket_detail_screen.dart';
 
 class TechnicianDashboardScreen extends StatefulWidget {
@@ -141,6 +142,12 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
               t['date'] ??
               t['timestamp'];
 
+          final dynamic rawRating = t['rating'];
+          final int? rating = (rawRating is num)
+              ? rawRating.toInt()
+              : int.tryParse(rawRating?.toString() ?? '');
+          final String? feedback = t['feedback']?.toString();
+
           return {
             'id': id,
             'customerName': customerName,
@@ -148,6 +155,8 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
             'category': category,
             'status': status,
             'formattedDate': _formatDate(rawDate),
+            'rating': rating,
+            'feedback': feedback,
           };
         }).toList();
 
@@ -402,6 +411,16 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
           .where(
             (t) =>
                 t['status'] == 'IN_PROGRESS' || t['status'] == 'IN PROGRESS',
+          )
+          .toList();
+    }
+    if (_selectedFilter == 'RESOLVED') {
+      return _tickets
+          .where(
+            (t) =>
+                t['status'] == 'RESOLVED' ||
+                t['status'] == 'DONE' ||
+                t['status'] == 'CLOSED',
           )
           .toList();
     }
@@ -787,7 +806,14 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
     final String category = ticket['category'] ?? 'Umum';
     final String status = ticket['status'] ?? 'OPEN';
     final String date = ticket['formattedDate'] ?? '-';
+    final dynamic rawRating = ticket['rating'];
+    final int? rating = (rawRating is num)
+        ? rawRating.toInt()
+        : int.tryParse(rawRating?.toString() ?? '');
+    final String? feedback = ticket['feedback']?.toString();
 
+    final bool isResolved = status.toUpperCase() == 'RESOLVED' ||
+        status.toUpperCase() == 'DONE';
     final Color statusColor = _getStatusColor(status);
 
     return Container(
@@ -875,6 +901,79 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                     ),
                   ],
                 ),
+
+                // Rating & Feedback Pelanggan (khusus tiket RESOLVED)
+                if (isResolved &&
+                    ((rating != null && rating > 0) ||
+                        (feedback != null && feedback.trim().isNotEmpty))) ...[
+                  const SizedBox(height: 8),
+                  if (rating != null && rating > 0)
+                    Row(
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(5, (starIdx) {
+                            final isFilled = starIdx < rating;
+                            return Icon(
+                              isFilled ? Icons.star : Icons.star_border,
+                              size: 16,
+                              color: isFilled
+                                  ? const Color(0xFFFFB800) // Oranye/emas
+                                  : const Color(0xFFCBD5E1),
+                            );
+                          }),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '($rating.0)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFD97706),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (feedback != null && feedback.trim().isNotEmpty) ...[
+                    if (rating != null && rating > 0) const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9), // Latar belakang abu-abu pudar
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.format_quote_rounded,
+                            size: 14,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              '"${feedback.trim()}"',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                                color: Color(0xFF475569),
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 10),
 
                 // Nama Pelapor
@@ -959,6 +1058,50 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+
+                    // Tombol Chat
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        side: const BorderSide(
+                          color: Color(0xFF3B82F6),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.chat_bubble_outline,
+                        size: 16,
+                        color: Color(0xFF3B82F6),
+                      ),
+                      label: const Text(
+                        'Chat',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF3B82F6),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TicketChatScreen(
+                              ticketId: id,
+                              ticketCode: id,
+                              ticketTitle: description,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
 
                     // Tombol Aksi Ubah Status
                     OutlinedButton.icon(

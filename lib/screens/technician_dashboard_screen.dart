@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'announcements_screen.dart';
+import 'knowledge_base_screen.dart';
 import 'login_screen.dart';
 import 'ticket_chat_screen.dart';
 import 'ticket_detail_screen.dart';
@@ -454,6 +456,30 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.menu_book_outlined, color: Color(0xFF1E293B)),
+            tooltip: 'Basis Pengetahuan',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const KnowledgeBaseScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.campaign_outlined, color: Color(0xFF1E293B)),
+            tooltip: 'Pengumuman',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AnnouncementsScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, color: Color(0xFF48CEA4)),
             tooltip: 'Segarkan Tiket',
             onPressed: _fetchTickets,
@@ -844,6 +870,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                   problem: description,
                   status: status,
                   createdAt: date,
+                  ticketData: ticket,
                 ),
               ),
             );

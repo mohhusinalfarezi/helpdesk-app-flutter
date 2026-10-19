@@ -13,6 +13,8 @@ import 'settings_screen.dart';
 import 'faq_screen.dart';
 import 'notification_screen.dart';
 import 'ticket_chat_screen.dart';
+import 'announcements_screen.dart';
+import 'knowledge_base_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -554,6 +556,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   service['icon'] == Icons.settings_outlined;
               final isLiveChat =
                   service['icon'] == Icons.chat_bubble_outline;
+              final isKnowledgeBase =
+                  service['icon'] == Icons.menu_book;
+              final isAnnouncements =
+                  service['icon'] == Icons.campaign_outlined;
 
               return GestureDetector(
                 onTap: isSubmitTicket
@@ -579,7 +585,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           }
                         : isLiveChat
                             ? () => _openLiveChat()
-                            : _showInDevelopmentSnackBar,
+                            : isKnowledgeBase
+                                ? () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const KnowledgeBaseScreen(),
+                                      ),
+                                    );
+                                  }
+                                : isAnnouncements
+                                    ? () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const AnnouncementsScreen(),
+                                          ),
+                                        );
+                                      }
+                                    : _showInDevelopmentSnackBar,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -908,6 +934,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               problem: problem,
               status: status,
               createdAt: formattedDate,
+              ticketData: ticket,
             ),
           ),
         );

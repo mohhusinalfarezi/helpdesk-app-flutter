@@ -10,6 +10,8 @@ class TicketDetailScreen extends StatefulWidget {
   final String problem;
   final String status;
   final String createdAt;
+  final dynamic ticketData;
+  final String? technicianName;
 
   const TicketDetailScreen({
     super.key,
@@ -17,6 +19,8 @@ class TicketDetailScreen extends StatefulWidget {
     required this.problem,
     required this.status,
     required this.createdAt,
+    this.ticketData,
+    this.technicianName,
   });
 
   @override
@@ -29,6 +33,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   late String _createdAt;
   bool _isRefreshing = false;
   dynamic _ticketData;
+  String? _technicianName;
   int? _rating;
   String? _feedback;
 
@@ -38,7 +43,29 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     _problem = widget.problem;
     _status = widget.status;
     _createdAt = widget.createdAt;
+    _technicianName = widget.technicianName;
+    if (widget.ticketData != null) {
+      _ticketData = widget.ticketData;
+      _technicianName ??= _extractTechnicianName(_ticketData);
+    }
     _fetchTicketDetails();
+  }
+
+  String? _extractTechnicianName(dynamic data) {
+    if (data == null) return null;
+    if (data is Map) {
+      final name = data['technicianName'] ??
+          data['technician_name'] ??
+          data['assignedTechnician'] ??
+          (data['technician'] is Map
+              ? (data['technician']['technicianName'] ??
+                  data['technician']['name'])
+              : null);
+      if (name != null && name.toString().trim().isNotEmpty) {
+        return name.toString().trim();
+      }
+    }
+    return null;
   }
 
   Future<void> _fetchTicketDetails() async {
@@ -52,70 +79,116 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       final token = prefs.getString('jwt_token');
 
       if (token != null && token.isNotEmpty) {
-        final response = await http.get(
-          Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
+        dynamic matched;
 
-        if (response.statusCode == 200) {
-          final List<dynamic> data = json.decode(response.body);
-          final dynamic matched = data.firstWhere(
-            (t) =>
-                t['ticketId']?.toString() == widget.ticketId ||
-                t['id']?.toString() == widget.ticketId,
-            orElse: () => null,
+        // 1. Coba ambil dari endpoint detail spesifik /api/tickets/{ticketId}
+        try {
+          final detailRes = await http.get(
+            Uri.parse('http://10.0.2.2:8080/api/tickets/${widget.ticketId}'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
           );
-
-          if (matched != null && mounted) {
-            final String newStatus = (matched['currentStatus']?.toString() ??
-                    matched['status']?.toString() ??
-                    _status)
-                .trim()
-                .toUpperCase();
-
-            final String newProblem = matched['description']?.toString() ??
-                matched['problem']?.toString() ??
-                _problem;
-
-            final dynamic rawDate = matched['reportDate'] ??
-                matched['createdAt'] ??
-                matched['created_at'] ??
-                matched['report_date'] ??
-                matched['date'] ??
-                matched['timestamp'];
-
-            String newDate = '';
-            if (rawDate != null && rawDate.toString().trim().isNotEmpty) {
-              final dateStr = rawDate.toString().trim();
-              try {
-                final dt = DateTime.parse(dateStr).toLocal();
-                newDate =
-                    '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-              } catch (_) {
-                newDate = dateStr;
-              }
-            }
-
-            final dynamic rawRating = matched['rating'];
-            final int? newRating = (rawRating is num)
-                ? rawRating.toInt()
-                : int.tryParse(rawRating?.toString() ?? '');
-            final String? newFeedback = matched['feedback']?.toString();
-
-            setState(() {
-              _status = newStatus;
-              _problem = newProblem;
-              _ticketData = matched;
-              _rating = newRating;
-              _feedback = newFeedback;
-              if (newDate.isNotEmpty) {
-                _createdAt = newDate;
-              }
-            });
+          if (detailRes.statusCode == 200) {
+            matched = json.decode(detailRes.body);
           }
+        } catch (_) {}
+
+        // 2. Fallback ke /my-tickets jika belum didapat
+        if (matched == null) {
+          try {
+            final response = await http.get(
+              Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            );
+            if (response.statusCode == 200) {
+              final List<dynamic> data = json.decode(response.body);
+              matched = data.firstWhere(
+                (t) =>
+                    t['ticketId']?.toString() == widget.ticketId ||
+                    t['id']?.toString() == widget.ticketId,
+                orElse: () => null,
+              );
+            }
+          } catch (_) {}
+        }
+
+        // 3. Fallback ke /all jika user adalah teknisi/admin
+        if (matched == null) {
+          try {
+            final allRes = await http.get(
+              Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            );
+            if (allRes.statusCode == 200) {
+              final List<dynamic> allData = json.decode(allRes.body);
+              matched = allData.firstWhere(
+                (t) =>
+                    t['ticketId']?.toString() == widget.ticketId ||
+                    t['id']?.toString() == widget.ticketId,
+                orElse: () => null,
+              );
+            }
+          } catch (_) {}
+        }
+
+        if (matched != null && mounted) {
+          final String newStatus = (matched['currentStatus']?.toString() ??
+                  matched['status']?.toString() ??
+                  _status)
+              .trim()
+              .toUpperCase();
+
+          final String newProblem = matched['description']?.toString() ??
+              matched['problem']?.toString() ??
+              _problem;
+
+          final dynamic rawDate = matched['reportDate'] ??
+              matched['createdAt'] ??
+              matched['created_at'] ??
+              matched['report_date'] ??
+              matched['date'] ??
+              matched['timestamp'];
+
+          String newDate = '';
+          if (rawDate != null && rawDate.toString().trim().isNotEmpty) {
+            final dateStr = rawDate.toString().trim();
+            try {
+              final dt = DateTime.parse(dateStr).toLocal();
+              newDate =
+                  '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+            } catch (_) {
+              newDate = dateStr;
+            }
+          }
+
+          final dynamic rawRating = matched['rating'];
+          final int? newRating = (rawRating is num)
+              ? rawRating.toInt()
+              : int.tryParse(rawRating?.toString() ?? '');
+          final String? newFeedback = matched['feedback']?.toString();
+          final String? fetchedTech = _extractTechnicianName(matched);
+
+          setState(() {
+            _status = newStatus;
+            _problem = newProblem;
+            _ticketData = matched;
+            _rating = newRating;
+            _feedback = newFeedback;
+            if (fetchedTech != null && fetchedTech.isNotEmpty) {
+              _technicianName = fetchedTech;
+            }
+            if (newDate.isNotEmpty) {
+              _createdAt = newDate;
+            }
+          });
         }
       }
     } catch (e) {
@@ -151,6 +224,21 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     final isResolved = _status.toUpperCase() == 'RESOLVED' ||
         _status.toUpperCase() == 'CLOSED' ||
         _status.toUpperCase() == 'DONE';
+
+    final String? techName =
+        _technicianName ?? _extractTechnicianName(_ticketData);
+    final bool hasTechnician = techName != null && techName.trim().isNotEmpty;
+    final String badgeText =
+        hasTechnician ? techName.trim() : 'Menunggu Teknisi';
+    final IconData badgeIcon = hasTechnician
+        ? Icons.engineering_outlined
+        : Icons.hourglass_empty_rounded;
+    final Color badgeBg = hasTechnician
+        ? const Color(0xFFE6F7F2)
+        : const Color(0xFFFFF4ED);
+    final Color badgeTextColor = hasTechnician
+        ? const Color(0xFF0F766E)
+        : const Color(0xFFC2410C);
 
     String displayDate = _createdAt.trim();
     if (displayDate.isEmpty || displayDate == 'Tanggal tidak tersedia') {
@@ -299,33 +387,47 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Department Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.support_agent,
-                                    color: Colors.white,
-                                    size: 14,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'IT Support',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
+                            // Teknisi Penanggung Jawab Badge (Informatif)
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: badgeBg,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.04),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      badgeIcon,
+                                      color: badgeTextColor,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        badgeText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: badgeTextColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

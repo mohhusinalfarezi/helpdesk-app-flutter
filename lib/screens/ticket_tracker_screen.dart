@@ -976,6 +976,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
               problem: title,
               status: status,
               createdAt: time,
+              ticketData: ticket,
             ),
           ),
         );

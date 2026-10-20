@@ -8,6 +8,7 @@ import 'knowledge_base_screen.dart';
 import 'login_screen.dart';
 import 'ticket_chat_screen.dart';
 import 'ticket_detail_screen.dart';
+import 'manage_assets_screen.dart';
 
 class TechnicianDashboardScreen extends StatefulWidget {
   const TechnicianDashboardScreen({super.key});
@@ -455,6 +456,18 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF1E293B)),
+            tooltip: 'Kelola Aset',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ManageAssetsScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.menu_book_outlined, color: Color(0xFF1E293B)),
             tooltip: 'Basis Pengetahuan',

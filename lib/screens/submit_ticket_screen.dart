@@ -4,7 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SubmitTicketScreen extends StatefulWidget {
-  const SubmitTicketScreen({super.key});
+  final String? initialDescription;
+  final String? initialCategoryId;
+
+  const SubmitTicketScreen({
+    super.key,
+    this.initialDescription,
+    this.initialCategoryId,
+  });
 
   @override
   State<SubmitTicketScreen> createState() => _SubmitTicketScreenState();
@@ -22,6 +29,17 @@ class _SubmitTicketScreenState extends State<SubmitTicketScreen> {
     {'id': '3', 'name': 'Network'},
     {'id': '4', 'name': 'General IT'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialDescription != null) {
+      _descriptionController.text = widget.initialDescription!;
+    }
+    if (widget.initialCategoryId != null) {
+      _selectedCategoryId = widget.initialCategoryId;
+    }
+  }
 
   @override
   void dispose() {

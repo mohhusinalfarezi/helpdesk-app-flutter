@@ -17,6 +17,7 @@ dependencies:
   image_picker: ^1.2.3
   easy_localization: ^3.0.7
   flutter_markdown: ^0.7.6
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

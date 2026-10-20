@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'chat_screen.dart'; // Import untuk memanggil AI Hazel
 import 'ticket_tracker_screen.dart'; // Import untuk halaman Pelacak Tiket
@@ -15,6 +16,7 @@ import 'notification_screen.dart';
 import 'ticket_chat_screen.dart';
 import 'announcements_screen.dart';
 import 'knowledge_base_screen.dart';
+import 'my_assets_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -140,6 +142,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _launchWhatsAppSupport() async {
+    const phoneNumber = '6281234567890';
+    final message = Uri.encodeComponent(
+      'Halo Tim IT Support, saya butuh bantuan terkait...',
+    );
+    final url = Uri.parse('https://wa.me/$phoneNumber?text=$message');
+
+    try {
+      final launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak dapat membuka WhatsApp. Pastikan aplikasi terpasang.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka WhatsApp: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   /// Buka Live Chat: cari tiket aktif pertama lalu buka ruang obrolan.
@@ -383,7 +417,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildQuickAction(
                     context,
@@ -420,22 +454,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   _buildQuickAction(
                     context,
-                    icon: Icons.help_outline,
-                    label: 'faq'.tr(),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FaqScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildQuickAction(
-                    context,
                     icon: Icons.phone_outlined,
                     label: 'call_support'.tr(),
-                    onTap: _showInDevelopmentSnackBar,
+                    onTap: _launchWhatsAppSupport,
                   ),
                 ],
               ),
@@ -502,8 +523,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'title': 'live_chat'.tr(),
       },
       {
-        'icon': Icons.email_outlined,
-        'title': 'email_support'.tr(),
+        'icon': Icons.devices_outlined,
+        'title': 'my_assets'.tr(),
       },
       {
         'icon': Icons.layers_outlined,
@@ -514,8 +535,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'title': 'announcements'.tr(),
       },
       {
-        'icon': Icons.favorite_border,
-        'title': 'feedback'.tr(),
+        'icon': Icons.quiz_outlined,
+        'title': 'faq'.tr(),
       },
       {
         'icon': Icons.settings_outlined,
@@ -560,6 +581,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   service['icon'] == Icons.menu_book;
               final isAnnouncements =
                   service['icon'] == Icons.campaign_outlined;
+              final isMyAssets =
+                  service['icon'] == Icons.devices_outlined;
+              final isFaq =
+                  service['icon'] == Icons.quiz_outlined;
 
               return GestureDetector(
                 onTap: isSubmitTicket
@@ -605,7 +630,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           ),
                                         );
                                       }
-                                    : _showInDevelopmentSnackBar,
+                                    : isMyAssets
+                                        ? () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const MyAssetsScreen(),
+                                              ),
+                                            );
+                                          }
+                                        : isFaq
+                                            ? () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        const FaqScreen(),
+                                                  ),
+                                                );
+                                              }
+                                            : _showInDevelopmentSnackBar,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,

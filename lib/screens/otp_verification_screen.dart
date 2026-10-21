@@ -219,7 +219,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   headers: {'Content-Type': 'application/json'},
                                   body: jsonEncode({'email': widget.email}),
                                 );
-                                if (!mounted) return;
+                                if (!context.mounted) return;
                                 ScaffoldMessenger.of(context)
                                     .hideCurrentSnackBar();
                                 if (response.statusCode == 200) {
@@ -245,7 +245,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   );
                                 }
                               } catch (e) {
-                                if (!mounted) return;
+                                if (!context.mounted) return;
                                 ScaffoldMessenger.of(context)
                                     .hideCurrentSnackBar();
                                 ScaffoldMessenger.of(context).showSnackBar(

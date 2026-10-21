@@ -158,8 +158,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tidak dapat membuka WhatsApp. Pastikan aplikasi terpasang.'),
+          SnackBar(
+            content: Text('whatsapp_not_installed'.tr()),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -222,13 +222,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Tidak ada tiket aktif. Silakan buat tiket baru terlebih dahulu.',
+            content: Text(
+              'no_active_tickets'.tr(),
             ),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
             action: SnackBarAction(
-              label: 'Buat Tiket',
+              label: 'submit_ticket'.tr(),
               textColor: Colors.white,
               onPressed: () async {
                 final result = await Navigator.push(
@@ -249,8 +249,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memuat tiket. Silakan coba lagi.'),
+          SnackBar(
+            content: Text('failed_load_tickets'.tr()),
             behavior: SnackBarBehavior.floating,
           ),
         );

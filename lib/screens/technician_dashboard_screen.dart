@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -444,9 +445,9 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Technician Dashboard',
-          style: TextStyle(
+        title: Text(
+          'technician_dashboard_title'.tr(),
+          style: const TextStyle(
             color: Color(0xFF1E293B),
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -458,7 +459,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF1E293B)),
-            tooltip: 'Kelola Aset',
+            tooltip: 'manage_assets_title'.tr(),
             onPressed: () {
               Navigator.push(
                 context,
@@ -584,9 +585,9 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Kelola & tindak lanjuti laporan kendala teknis',
-                  style: TextStyle(
+                Text(
+                  'tech_greeting_subtitle'.tr(),
+                  style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF64748B),
                   ),
@@ -609,7 +610,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
       children: [
         Expanded(
           child: _buildStatItem(
-            label: 'Total Masuk',
+            label: 'summary_total'.tr(),
             count: total,
             color: const Color(0xFF1E293B),
             icon: Icons.confirmation_number_outlined,
@@ -618,7 +619,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildStatItem(
-            label: 'Open',
+            label: 'summary_open'.tr(),
             count: open,
             color: const Color(0xFF3B82F6),
             icon: Icons.fiber_new,
@@ -627,7 +628,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildStatItem(
-            label: 'Diproses',
+            label: 'summary_in_progress'.tr(),
             count: inProgress,
             color: const Color(0xFFF59E0B),
             icon: Icons.autorenew,
@@ -636,7 +637,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildStatItem(
-            label: 'Selesai',
+            label: 'summary_resolved'.tr(),
             count: resolved,
             color: const Color(0xFF48CEA4),
             icon: Icons.check_circle_outline,
@@ -688,10 +689,10 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
 
   Widget _buildFilterChips() {
     final filters = [
-      {'key': 'ALL', 'label': 'Semua'},
-      {'key': 'OPEN', 'label': 'Open'},
-      {'key': 'IN_PROGRESS', 'label': 'In Progress'},
-      {'key': 'RESOLVED', 'label': 'Resolved'},
+      {'key': 'ALL', 'label': 'filter_all'.tr()},
+      {'key': 'OPEN', 'label': 'filter_open'.tr()},
+      {'key': 'IN_PROGRESS', 'label': 'filter_in_progress'.tr()},
+      {'key': 'RESOLVED', 'label': 'filter_resolved'.tr()},
     ];
 
     return SingleChildScrollView(
@@ -774,7 +775,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                 ),
               ),
               onPressed: _fetchTickets,
-              child: const Text('Coba Lagi'),
+              child: Text('try_again'.tr()),
             ),
           ],
         ),
@@ -1120,9 +1121,9 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                         size: 16,
                         color: Color(0xFF3B82F6),
                       ),
-                      label: const Text(
-                        'Chat',
-                        style: TextStyle(
+                      label: Text(
+                        'btn_chat'.tr(),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF3B82F6),
@@ -1164,9 +1165,9 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
                         size: 16,
                         color: Color(0xFF48CEA4),
                       ),
-                      label: const Text(
-                        'Ubah Status',
-                        style: TextStyle(
+                      label: Text(
+                        'btn_change_status'.tr(),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF48CEA4),

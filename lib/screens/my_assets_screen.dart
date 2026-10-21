@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,7 +126,7 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
       case 'ASSIGNED':
       case 'SEDANG DIGUNAKAN':
         return {
-          'label': 'Sedang Digunakan',
+          'label': 'in_use'.tr(),
           'textColor': const Color(0xFF059669),
           'bgColor': const Color(0xFFECFDF5),
           'borderColor': const Color(0xFFA7F3D0),
@@ -134,7 +135,7 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
       case 'IN_REPAIR':
       case 'PERBAIKAN':
         return {
-          'label': 'Dalam Perbaikan',
+          'label': 'in_repair'.tr(),
           'textColor': const Color(0xFFD97706),
           'bgColor': const Color(0xFFFFFBEB),
           'borderColor': const Color(0xFFFDE68A),
@@ -142,7 +143,7 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
       case 'AVAILABLE':
       case 'READY':
         return {
-          'label': 'Tersedia',
+          'label': 'available'.tr(),
           'textColor': const Color(0xFF2563EB),
           'bgColor': const Color(0xFFEFF6FF),
           'borderColor': const Color(0xFFBFDBFE),
@@ -206,9 +207,9 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Perangkat Saya',
-          style: TextStyle(
+        title: Text(
+          'my_devices_title'.tr(),
+          style: const TextStyle(
             color: Color(0xFF1E293B),
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -264,9 +265,9 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Terjadi Kesalahan',
-                style: TextStyle(
+              Text(
+                'error_occurred'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
@@ -285,9 +286,9 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
               ElevatedButton.icon(
                 onPressed: _fetchMyAssets,
                 icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-                label: const Text(
-                  'Coba Lagi',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                label: Text(
+                  'try_again'.tr(),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF48CEA4),
@@ -325,19 +326,19 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Belum Ada Perangkat',
-                style: TextStyle(
+              Text(
+                'no_devices_title'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Anda belum memiliki perangkat IT yang terdaftar atau ditetapkan ke akun Anda.',
+              Text(
+                'no_devices_desc'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
                   height: 1.4,
@@ -347,9 +348,9 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
               OutlinedButton.icon(
                 onPressed: _fetchMyAssets,
                 icon: const Icon(Icons.refresh, color: Color(0xFF48CEA4), size: 18),
-                label: const Text(
-                  'Muat Ulang',
-                  style: TextStyle(
+                label: Text(
+                  'reload'.tr(),
+                  style: const TextStyle(
                     color: Color(0xFF48CEA4),
                     fontWeight: FontWeight.bold,
                   ),
@@ -570,9 +571,9 @@ class _MyAssetsScreenState extends State<MyAssetsScreen> {
                     size: 16,
                     color: Color(0xFFEF4444),
                   ),
-                  label: const Text(
-                    'Laporkan Kendala',
-                    style: TextStyle(
+                  label: Text(
+                    'report_issue'.tr(),
+                    style: const TextStyle(
                       color: Color(0xFFEF4444),
                       fontWeight: FontWeight.w600,
                       fontSize: 12,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -1043,9 +1044,9 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Pengumuman',
-          style: TextStyle(
+        title: Text(
+          'announcements_title'.tr(),
+          style: const TextStyle(
             color: Color(0xFF1E293B),
             fontSize: 18,
             fontWeight: FontWeight.bold,

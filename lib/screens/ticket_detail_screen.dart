@@ -229,7 +229,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         _technicianName ?? _extractTechnicianName(_ticketData);
     final bool hasTechnician = techName != null && techName.trim().isNotEmpty;
     final String badgeText =
-        hasTechnician ? techName.trim() : 'Menunggu Teknisi';
+        hasTechnician ? techName.trim() : 'waiting_technician'.tr();
     final IconData badgeIcon = hasTechnician
         ? Icons.engineering_outlined
         : Icons.hourglass_empty_rounded;
@@ -303,11 +303,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                                 ),
                               ),
                             ),
-                            const Expanded(
+                            Expanded(
                               child: Center(
                                 child: Text(
-                                  'Ticket Details',
-                                  style: TextStyle(
+                                  'ticket_details_title'.tr(),
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -455,9 +455,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Issue Description',
-                          style: TextStyle(
+                        Text(
+                          'issue_description'.tr(),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Colors.grey,
@@ -519,9 +519,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Ticket Progress',
-                        style: TextStyle(
+                      Text(
+                        'ticket_progress'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1E293B),
@@ -529,22 +529,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildTimelineStep(
-                        title: 'Ticket Created',
-                        subtitle: 'Sistem telah menerima keluhan',
+                        title: 'progress_created'.tr(),
+                        subtitle: 'progress_created_desc'.tr(),
                         isActive: true,
                         isLast: false,
                       ),
                       _buildTimelineStep(
-                        title: 'In Progress',
-                        subtitle: 'Sedang ditangani oleh tim teknisi',
+                        title: 'progress_in_progress'.tr(),
+                        subtitle: 'progress_in_progress_desc'.tr(),
                         isActive: _status.toUpperCase() == 'IN_PROGRESS' ||
                             _status.toUpperCase() == 'IN PROGRESS' ||
                             isResolved,
                         isLast: false,
                       ),
                       _buildTimelineStep(
-                        title: 'Resolved',
-                        subtitle: 'Masalah telah diselesaikan',
+                        title: 'progress_resolved'.tr(),
+                        subtitle: 'progress_resolved_desc'.tr(),
                         isActive: isResolved,
                         isLast: true,
                       ),

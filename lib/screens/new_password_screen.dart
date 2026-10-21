@@ -208,7 +208,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                         }),
                       );
 
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
                       if (response.statusCode == 200) {
@@ -224,7 +224,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                         );
                       }
                     } catch (e) {
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

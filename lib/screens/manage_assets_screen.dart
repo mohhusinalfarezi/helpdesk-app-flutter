@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -674,9 +675,9 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Kelola Aset Kantor',
-          style: TextStyle(
+        title: Text(
+          'manage_assets_title'.tr(),
+          style: const TextStyle(
             color: Color(0xFF1E293B),
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -696,7 +697,7 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Color(0xFF48CEA4)),
-            tooltip: 'Segarkan Data',
+            tooltip: 'refresh_data'.tr(),
             onPressed: _fetchAssets,
           ),
         ],
@@ -705,9 +706,9 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
         onPressed: _showAddAssetDialog,
         backgroundColor: const Color(0xFF48CEA4),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Tambah Perangkat',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        label: Text(
+          'add_device'.tr(),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: RefreshIndicator(
@@ -835,9 +836,9 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Terjadi Kesalahan',
-                style: TextStyle(
+              Text(
+                'error_occurred'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
@@ -856,9 +857,9 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
               ElevatedButton.icon(
                 onPressed: _fetchAssets,
                 icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-                label: const Text(
-                  'Coba Lagi',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                label: Text(
+                  'try_again'.tr(),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF48CEA4),

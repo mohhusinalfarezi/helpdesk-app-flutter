@@ -178,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       if (response.statusCode == 200) {
                         // Sukses masuk database
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
@@ -192,7 +192,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       } else {
                         // Gagal (misal: Email sudah terdaftar)
                         final data = jsonDecode(response.body);
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -205,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                     } catch (e) {
                       // Error jaringan / Server mati
-                      if (mounted) {
+                      if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(

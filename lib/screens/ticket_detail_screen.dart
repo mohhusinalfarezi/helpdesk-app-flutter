@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/rating_dialog.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final String ticketId;
@@ -84,7 +85,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         // 1. Coba ambil dari endpoint detail spesifik /api/tickets/{ticketId}
         try {
           final detailRes = await http.get(
-            Uri.parse('http://10.0.2.2:8080/api/tickets/${widget.ticketId}'),
+            Uri.parse('${ApiConfig.baseUrl}/api/tickets/${widget.ticketId}'),
             headers: {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
@@ -99,7 +100,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         if (matched == null) {
           try {
             final response = await http.get(
-              Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
+              Uri.parse('${ApiConfig.baseUrl}/api/tickets/my-tickets'),
               headers: {
                 'Authorization': 'Bearer $token',
                 'Content-Type': 'application/json',
@@ -121,7 +122,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         if (matched == null) {
           try {
             final allRes = await http.get(
-              Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+              Uri.parse('${ApiConfig.baseUrl}/api/tickets/all'),
               headers: {
                 'Authorization': 'Bearer $token',
                 'Content-Type': 'application/json',

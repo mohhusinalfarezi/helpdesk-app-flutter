@@ -10,6 +10,7 @@ import 'login_screen.dart';
 import 'ticket_chat_screen.dart';
 import 'ticket_detail_screen.dart';
 import 'manage_assets_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class TechnicianDashboardScreen extends StatefulWidget {
   const TechnicianDashboardScreen({super.key});
@@ -80,7 +81,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
 
       // Coba ambil dari /api/tickets/all (endpoint seluruh tiket untuk dashboard)
       http.Response response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/tickets/all'),
+        Uri.parse('${ApiConfig.baseUrl}/api/tickets/all'),
         headers: {
           'Authorization': 'Bearer $cleanToken',
           'Content-Type': 'application/json',
@@ -90,7 +91,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
       // Fallback jika /all tidak tersedia (misal 403 atau 404), gunakan /my-tickets
       if (response.statusCode != 200) {
         response = await http.get(
-          Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
+          Uri.parse('${ApiConfig.baseUrl}/api/tickets/my-tickets'),
           headers: {
             'Authorization': 'Bearer $cleanToken',
             'Content-Type': 'application/json',
@@ -213,7 +214,7 @@ class _TechnicianDashboardScreenState extends State<TechnicianDashboardScreen> {
 
     try {
       final response = await http.patch(
-        Uri.parse('http://10.0.2.2:8080/api/tickets/$ticketId/status'),
+        Uri.parse('${ApiConfig.baseUrl}/api/tickets/$ticketId/status'),
         headers: {
           'Authorization': 'Bearer $cleanToken',
           'Content-Type': 'application/json',

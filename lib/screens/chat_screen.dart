@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // Wajib ditambahkan untuk ambil token
 
 import 'ticket_detail_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -69,7 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://10.0.2.2:8080/api/upload'),
+        Uri.parse('${ApiConfig.baseUrl}/api/upload'),
       );
       request.files.add(
         await http.MultipartFile.fromPath('file', imageFile.path),
@@ -126,7 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final token = prefs.getString('jwt_token');
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/api/chat'),
+        Uri.parse('${ApiConfig.baseUrl}/api/chat'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization':
@@ -251,7 +252,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/api/tickets'),
+        Uri.parse('${ApiConfig.baseUrl}/api/tickets'),
         headers: {
           'Authorization': 'Bearer $cleanToken',
           'Content-Type': 'application/json',

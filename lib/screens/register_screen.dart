@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:helpdesk_app/config/api_config.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -162,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     // 3. Panggil API Backend Spring Boot
                     final url = Uri.parse(
-                      'http://10.0.2.2:8080/api/auth/register',
+                      '${ApiConfig.baseUrl}/api/auth/register',
                     );
 
                     try {

@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 /// Menampilkan modal dialog interaktif untuk memberikan rating & feedback tiket yang berstatus RESOLVED
 Future<void> showRatingDialog(
@@ -219,7 +220,7 @@ Future<void> showRatingDialog(
                                       final token = prefs.getString('jwt_token') ?? '';
 
                                       final url = Uri.parse(
-                                        'http://10.0.2.2:8080/api/tickets/$ticketId/feedback',
+                                        '${ApiConfig.baseUrl}/api/tickets/$ticketId/feedback',
                                       );
 
                                       final response = await http.post(

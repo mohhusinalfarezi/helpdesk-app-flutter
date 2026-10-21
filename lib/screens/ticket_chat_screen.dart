@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 /// Layar Live Chat per-tiket.
 /// Menampilkan percakapan antara pengguna dan teknisi dalam bubble chat.
@@ -95,7 +96,7 @@ class _TicketChatScreenState extends State<TicketChatScreen> {
 
       final response = await http.get(
         Uri.parse(
-          'http://10.0.2.2:8080/api/tickets/${widget.ticketId}/messages',
+          '${ApiConfig.baseUrl}/api/tickets/${widget.ticketId}/messages',
         ),
         headers: {
           'Authorization': 'Bearer $token',
@@ -173,7 +174,7 @@ class _TicketChatScreenState extends State<TicketChatScreen> {
 
       final response = await http.post(
         Uri.parse(
-          'http://10.0.2.2:8080/api/tickets/${widget.ticketId}/messages',
+          '${ApiConfig.baseUrl}/api/tickets/${widget.ticketId}/messages',
         ),
         headers: {
           'Authorization': 'Bearer $token',

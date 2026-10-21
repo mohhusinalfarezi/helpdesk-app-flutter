@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'login_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class NewPasswordScreen extends StatefulWidget {
   final String email;
@@ -200,7 +201,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
                     try {
                       final response = await http.post(
-                        Uri.parse('http://10.0.2.2:8080/api/auth/reset-password'),
+                        Uri.parse('${ApiConfig.baseUrl}/api/auth/reset-password'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode({
                           'email': widget.email,

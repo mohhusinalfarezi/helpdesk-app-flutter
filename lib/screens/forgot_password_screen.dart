@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'new_password_screen.dart';
 import 'otp_verification_screen.dart';
 import 'two_factor_auth_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -49,7 +50,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/api/auth/forgot-password'),
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/forgot-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import 'new_password_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -76,7 +77,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/api/auth/verify-otp'),
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/verify-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': widget.email, 'otp': combinedOtp}),
       );
@@ -214,7 +215,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               try {
                                 final response = await http.post(
                                   Uri.parse(
-                                    'http://10.0.2.2:8080/api/auth/forgot-password',
+                                    '${ApiConfig.baseUrl}/api/auth/forgot-password',
                                   ),
                                   headers: {'Content-Type': 'application/json'},
                                   body: jsonEncode({'email': widget.email}),

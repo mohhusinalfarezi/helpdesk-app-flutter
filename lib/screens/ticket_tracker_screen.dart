@@ -10,6 +10,7 @@ import 'ticket_chat_screen.dart';
 import 'ticket_detail_screen.dart';
 import 'notification_screen.dart';
 import '../widgets/rating_dialog.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 // ────────────────────────────────────────────────────────────
 // Enum untuk opsi sort
@@ -102,7 +103,7 @@ class _TicketTrackerScreenState extends State<TicketTrackerScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
+        Uri.parse('${ApiConfig.baseUrl}/api/tickets/my-tickets'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ticket_detail_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -50,7 +51,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/notifications'),
+        Uri.parse('${ApiConfig.baseUrl}/api/notifications'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -99,7 +100,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       if (token == null || token.isEmpty) return;
 
       final response = await http.put(
-        Uri.parse('http://10.0.2.2:8080/api/notifications/$rawId/read'),
+        Uri.parse('${ApiConfig.baseUrl}/api/notifications/$rawId/read'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

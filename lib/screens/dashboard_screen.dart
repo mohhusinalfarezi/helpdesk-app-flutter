@@ -17,6 +17,8 @@ import 'ticket_chat_screen.dart';
 import 'announcements_screen.dart';
 import 'knowledge_base_screen.dart';
 import 'my_assets_screen.dart';
+import 'service_catalog_screen.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -54,7 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // 2. Tembakkan request ke my-tickets (bukan all lagi)
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/tickets/my-tickets'),
+        Uri.parse('${ApiConfig.baseUrl}/api/tickets/my-tickets'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -101,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (token == null || token.isEmpty) return;
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/notifications'),
+        Uri.parse('${ApiConfig.baseUrl}/api/notifications'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -417,46 +419,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.chat_bubble_outline,
-                    label: 'ai_chat'.tr(),
-                    isActive: true,
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ChatScreen(),
-                        ),
-                      );
-                      if (mounted) {
-                        _refreshTickets();
-                      }
-                    },
+                  Expanded(
+                    child: _buildQuickAction(
+                      context,
+                      icon: Icons.chat_bubble_outline,
+                      label: 'ai_chat'.tr(),
+                      isActive: true,
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ChatScreen(),
+                          ),
+                        );
+                        if (mounted) {
+                          _refreshTickets();
+                        }
+                      },
+                    ),
                   ),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.analytics_outlined,
-                    label: 'track_ticket'.tr(),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TicketTrackerScreen(),
-                        ),
-                      );
-                      if (mounted) {
-                        _refreshTickets();
-                      }
-                    },
+                  Expanded(
+                    child: _buildQuickAction(
+                      context,
+                      icon: Icons.analytics_outlined,
+                      label: 'track_ticket'.tr(),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TicketTrackerScreen(),
+                          ),
+                        );
+                        if (mounted) {
+                          _refreshTickets();
+                        }
+                      },
+                    ),
                   ),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.phone_outlined,
-                    label: 'call_support'.tr(),
-                    onTap: _launchWhatsAppSupport,
+                  Expanded(
+                    child: _buildQuickAction(
+                      context,
+                      icon: Icons.phone_outlined,
+                      label: 'call_support'.tr(),
+                      onTap: _launchWhatsAppSupport,
+                    ),
                   ),
                 ],
               ),
@@ -476,7 +483,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
@@ -497,6 +507,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 8),
           Text(
             label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 12,
               fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
@@ -564,7 +577,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
-              childAspectRatio: 0.85,
+              childAspectRatio: 0.80,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
             ),
@@ -583,6 +596,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   service['icon'] == Icons.campaign_outlined;
               final isMyAssets =
                   service['icon'] == Icons.devices_outlined;
+              final isServiceCatalog =
+                  service['icon'] == Icons.layers_outlined;
               final isFaq =
                   service['icon'] == Icons.quiz_outlined;
 
@@ -640,7 +655,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               ),
                                             );
                                           }
-                                        : isFaq
+                                        : isServiceCatalog
+                                            ? () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        const ServiceCatalogScreen(),
+                                                  ),
+                                                );
+                                              }
+                                            : isFaq
                                             ? () {
                                                 Navigator.push(
                                                   context,
@@ -653,8 +678,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             : _showInDevelopmentSnackBar,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 10,
+                    horizontal: 4,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -672,7 +697,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: const Color(0xFF48CEA4).withValues(alpha: 0.1),
                           shape: BoxShape.circle,
@@ -683,7 +708,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           size: 24,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         service['title'],
                         textAlign: TextAlign.center,

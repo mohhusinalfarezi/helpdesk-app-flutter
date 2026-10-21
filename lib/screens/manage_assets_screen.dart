@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class ManageAssetsScreen extends StatefulWidget {
   const ManageAssetsScreen({super.key});
@@ -50,7 +51,7 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
           ? token.substring(7).trim()
           : token.trim();
 
-      final url = Uri.parse('http://10.0.2.2:8080/api/assets');
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/assets');
       final response = await http.get(
         url,
         headers: {
@@ -565,7 +566,7 @@ class _ManageAssetsScreenState extends State<ManageAssetsScreen> {
                                       };
 
                                       final url = Uri.parse(
-                                        'http://10.0.2.2:8080/api/assets',
+                                        '${ApiConfig.baseUrl}/api/assets',
                                       );
                                       final response = await http.post(
                                         url,

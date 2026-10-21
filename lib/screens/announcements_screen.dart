@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helpdesk_app/config/api_config.dart';
 
 class AnnouncementData {
   final String id;
@@ -153,12 +154,12 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   String get _baseUrl {
     if (kIsWeb) return 'http://localhost:8080/api';
     try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:8080/api';
+      if (Platform.isAndroid) return '${ApiConfig.baseUrl}/api';
       if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
         return 'http://localhost:8080/api';
       }
     } catch (_) {}
-    return 'http://10.0.2.2:8080/api';
+    return '${ApiConfig.baseUrl}/api';
   }
 
   bool get _isStaff =>
